@@ -6,3 +6,193 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id                    String                  @id @default(uuid())
+  username              String                  @unique
+  email                 String                  @unique
+  firstName             String                  @map("first_name")
+  lastName              String                  @map("last_name")
+  verified              Boolean
+  password              String
+  userStatus            UserStatus              @map("user_status")
+  followers             User[]                  @relation(name: "follow")
+  following             User[]                  @relation(name: "follow")
+  userInformation       UserInfo?
+  posts                 Post[]
+  likedPosts            Post[]                  @relation(name: "likes")
+  savedPosts            Post[]                  @relation(name: "saved")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+  postsId               String?
+  createdGroups         Group[]                 @relation(name: "creator")
+  groups                Group[]                 @relation(name: "members")
+  Messages              Message[]
+  refreshTokens         refreshTokens[]
+  userVerificationToken userVerificationToken[]
+  userPreferedTag       userPreferedTag[]
+
+  @@index([email])
+  @@index([username])
+  @@map("users")
+}
+
+model UserInfo {
+  user        User     @relation(fields: [usersId], references: [id])
+  usersId     String   @id
+  gender      Gender
+  dateOfBirth DateTime
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("userInformation")
+}
+
+model Post {
+  id           String        @id @default(uuid())
+  creator      User          @relation(fields: [userId], references: [id])
+  userId       String
+  content      String        @db.Text
+  Reposts      Post[]        @relation(name: "reposts")
+  MainPost     Post?         @relation(fields: [mainPostId], references: [id], name: "reposts")
+  mainPostId   String?
+  likedBy      User[]        @relation(name: "likes")
+  savedBy      User[]        @relation(name: "saved")
+  media        Media         @relation(fields: [mediaId], references: [id])
+  mediaId      String
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  postComments postComment[]
+  postTags     postTags[]
+
+  @@map("posts")
+}
+
+model postTags {
+  id    String @id @default(uuid())
+  name  String @unique
+  posts Post[]
+
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  userPreferedTag userPreferedTag[]
+
+  @@map("post_tags")
+}
+
+model postComment {
+  id             String        @id @default(uuid())
+  post           Post          @relation(fields: [post_id], references: [id])
+  post_id        String        @map("postsId")
+  content        String
+  parentComment  postComment?  @relation(fields: [postCommentsId], references: [id], name: "comments")
+  postCommentsId String?
+  comments       postComment[] @relation(name: "comments")
+  media          Media         @relation(fields: [mediaId], references: [id])
+  mediaId        String
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  @@map("postComments")
+}
+
+model Media {
+  id           String        @id @default(uuid())
+  mimeType     String        @map("mime_type")
+  path         String
+  byteSize     Int           @map("byte_size")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  postComments postComment[]
+  Posts        Post[]
+}
+
+model Group {
+  id           String    @id @default(uuid())
+  creator      User      @relation(fields: [userId], references: [id], name: "creator")
+  userId       String
+  name         String
+  description  String
+  groupMembers User[]    @relation(name: "members")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  Messages     Message[]
+
+  @@map("Groups")
+}
+
+model Message {
+  id        String        @id @default(uuid())
+  content   String
+  status    MessageStatus
+  Sender    User          @relation(fields: [userId], references: [id])
+  Group     Group         @relation(fields: [groupId], references: [id])
+  userId    String
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  groupId   String
+
+  @@map("Messages")
+}
+
+model refreshTokens {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  token     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  revoked   Boolean
+
+  @@map("refresh_tokens")
+}
+
+model resetPasswordToken {
+  id        String   @id @default(uuid())
+  token     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("reset_password_tokens")
+}
+
+model userVerificationToken {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  userId    String
+
+  @@map("user_verification_tokens")
+}
+
+//This is used mostly for quicker quering of users most prefered tags
+model userPreferedTag {
+  id         String   @id @default(uuid())
+  tag        postTags @relation(fields: [postTagsId], references: [id])
+  postTagsId String
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  popularity Int
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("user_prefered_tags")
+}
+
+enum UserStatus {
+  active
+  banned
+}
+
+enum MessageStatus {
+  active
+  deleted
+}
+
+enum Gender {
+  male
+  female
+  other
+  unkown
+}
