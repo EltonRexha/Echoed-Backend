@@ -15,7 +15,7 @@ model User {
   lastName              String                  @map("last_name")
   verified              Boolean
   password              String
-  userStatus            UserStatus              @map("user_status")
+  userStatus            UserStatus              @default(active) @map("user_status")
   followers             User[]                  @relation(name: "follow")
   following             User[]                  @relation(name: "follow")
   userInformation       UserInfo?
@@ -159,6 +159,7 @@ model resetPasswordToken {
 model userVerificationToken {
   id        String   @id @default(uuid())
   user      User     @relation(fields: [userId], references: [id])
+  token     String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   userId    String
