@@ -18,7 +18,8 @@ model User {
   userStatus            UserStatus              @default(active) @map("user_status")
   followers             User[]                  @relation(name: "follow")
   following             User[]                  @relation(name: "follow")
-  userInformation       UserInfo?
+  userInfo              UserInfo                @relation(fields: [userInfoId], references: [id], onDelete: Cascade)
+  userInfoId            String                  @unique
   posts                 Post[]
   likedPosts            Post[]                  @relation(name: "likes")
   savedPosts            Post[]                  @relation(name: "saved")
@@ -38,12 +39,12 @@ model User {
 }
 
 model UserInfo {
-  user        User     @relation(fields: [usersId], references: [id])
-  usersId     String   @id
+  id          String   @id @default(uuid())
   gender      Gender
   dateOfBirth DateTime
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+  User        User?
 
   @@map("userInformation")
 }

@@ -1,9 +1,12 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { prisma } from '../db/client';
 import userSchema from '../validations/userSchema';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import JWT from 'jsonwebtoken';
+import sendEmail from '../utils/sendMail';
+import { internalError, zodError } from '../errors/errors';
+import sendVerifyEmail from '../utils/sendVerifyMail';
 
 export async function getUser(req: Request, res: Response): Promise<void> {
   const params = req.query;
@@ -33,7 +36,11 @@ export async function getUser(req: Request, res: Response): Promise<void> {
   res.json(users);
 }
 
-export async function createUser(req: Request, res: Response): Promise<void> {
+export async function createUser(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const user = userSchema.parse({
       ...req.body,
@@ -63,7 +70,7 @@ export async function createUser(req: Request, res: Response): Promise<void> {
       },
     }));
 
-    const userExists = userWithEmail && userWithUsername;
+    const userExists = userWithEmail || userWithUsername;
 
     if (userExists) {
       res.status(400).json({
@@ -81,7 +88,7 @@ export async function createUser(req: Request, res: Response): Promise<void> {
       { expiresIn: '10m' }
     );
 
-    await prisma.user.create({
+    const createdUser = await prisma.user.create({
       data: {
         email,
         firstName,
@@ -89,7 +96,7 @@ export async function createUser(req: Request, res: Response): Promise<void> {
         password: passwordHash,
         username: username,
         verified: false,
-        userInformation: {
+        userInfo: {
           create: {
             dateOfBirth,
             gender,
@@ -103,15 +110,15 @@ export async function createUser(req: Request, res: Response): Promise<void> {
       },
     });
 
+    await sendVerifyEmail(email, userVerificationToken, createdUser);
     res.status(201).json({
       message: 'User successfully created',
-      verificationToken: userVerificationToken,
     });
   } catch (e) {
     if (e instanceof z.ZodError) {
-      res.status(400).json({ errors: e.errors });
-      return;
+      next(zodError(e.errors));
     }
-    res.status(500).json({ error: 'Internal Server Error' });
+    console.log(e);
+    next(internalError());
   }
 }
