@@ -16,12 +16,12 @@ const PORT = process.env.PORT || 3000;
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   if (err instanceof CustomError) {
-    res.status(err.code).json({ errors: JSON.parse(err.message) });
+    res.status(err.code).json(err.jsonError);
     return;
   }
 
   const internal = internalError();
-  res.status(internal.code).json({ errors: JSON.parse(internal.message) });
+  res.status(internal.code).json(internal.jsonError);
 });
 
 app.listen(PORT, async () => {

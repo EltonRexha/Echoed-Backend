@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer';
+import hbs from 'nodemailer-express-handlebars';
+const path = require('path');
 
 const emailTransporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
@@ -12,5 +14,18 @@ const emailTransporter = nodemailer.createTransport({
     rejectUnauthorized: false,
   },
 });
+
+emailTransporter.use(
+  'compile',
+  hbs({
+    viewEngine: {
+      extname: '.hbs',
+      partialsDir: path.join(__dirname, '..', 'emails'),
+      defaultLayout: false,
+    },
+    viewPath: path.join(__dirname, '..', 'emails'),
+    extName: '.hbs',
+  })
+);
 
 export default emailTransporter;

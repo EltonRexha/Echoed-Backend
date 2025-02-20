@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import JWT from 'jsonwebtoken';
 import sendEmail from '../utils/sendMail';
 import { internalError, zodError } from '../errors/errors';
+import sendVerifyEmail from '../utils/sendVerifyMail';
 
 export async function getUser(req: Request, res: Response): Promise<void> {
   const params = req.query;
@@ -35,7 +36,11 @@ export async function getUser(req: Request, res: Response): Promise<void> {
   res.json(users);
 }
 
-export async function createUser(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function createUser(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const user = userSchema.parse({
       ...req.body,
@@ -83,7 +88,7 @@ export async function createUser(req: Request, res: Response, next: NextFunction
       { expiresIn: '10m' }
     );
 
-    await prisma.user.create({
+    const createdUser = await prisma.user.create({
       data: {
         email,
         firstName,
@@ -105,11 +110,7 @@ export async function createUser(req: Request, res: Response, next: NextFunction
       },
     });
 
-    await sendEmail(
-      email,
-      'Echoed verification code',
-      `<h1>${userVerificationToken}</h1>`
-    );
+    await sendVerifyEmail(email, userVerificationToken, createdUser);
     res.status(201).json({
       message: 'User successfully created',
     });
@@ -117,6 +118,7 @@ export async function createUser(req: Request, res: Response, next: NextFunction
     if (e instanceof z.ZodError) {
       next(zodError(e.errors));
     }
+    console.log(e);
     next(internalError());
   }
 }
