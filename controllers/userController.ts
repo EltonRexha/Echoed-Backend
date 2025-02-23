@@ -124,8 +124,8 @@ export async function createUser(
   } catch (e) {
     if (e instanceof z.ZodError) {
       next(zodError(e.errors));
+      return;
     }
-    console.log(e);
     next(internalError());
   }
 }
