@@ -42,6 +42,7 @@ model UserInfo {
   id          String   @id @default(uuid())
   gender      Gender
   dateOfBirth DateTime
+  country     String
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   User        User?

@@ -4,36 +4,42 @@ import userSchema from '../validations/userSchema';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import JWT from 'jsonwebtoken';
-import sendEmail from '../utils/sendMail';
 import { internalError, zodError } from '../errors/errors';
 import sendVerifyEmail from '../utils/sendVerifyMail';
 
-export async function getUser(req: Request, res: Response): Promise<void> {
+export async function getUsers(req: Request, res: Response): Promise<void> {
   const params = req.query;
   const username = params.username as string | undefined;
   const email = params.email as string | undefined;
   const id = params.id as string | undefined;
+  const page = Number(params.page) || 1;
+  const limit = Number(params.limit) || 10;
+  const skip = (page - 1) * limit;
+  
+  const [users, totalUsers] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        username: username,
+        email: email,
+        id: id,
+      },
+      select: {
+        email: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+      },
+      skip,
+      take: limit,
+    }),
+    prisma.user.count(),
+  ]);
 
-  if (username === undefined && email === undefined && id === undefined) {
-    res.json([]);
-    return;
-  }
-
-  const users = await prisma.user.findMany({
-    where: {
-      username: username,
-      email: email,
-      id: id,
-    },
-    select: {
-      email: true,
-      username: true,
-      firstName: true,
-      lastName: true,
-    },
+  res.json({
+    users,
+    page,
+    totalPages: Math.ceil(totalUsers / limit),
   });
-
-  res.json(users);
 }
 
 export async function createUser(
@@ -98,6 +104,7 @@ export async function createUser(
         verified: false,
         userInfo: {
           create: {
+            country,
             dateOfBirth,
             gender,
           },
