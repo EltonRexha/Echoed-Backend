@@ -6,6 +6,13 @@ import bcrypt from 'bcryptjs';
 import JWT from 'jsonwebtoken';
 import { internalError, zodError } from '../errors/errors';
 import sendVerifyEmail from '../utils/sendVerifyMail';
+import createJWT from '../utils/createJWT';
+import notFoundError from '../errors/errorTypes/notFoundError';
+import { addMinutes } from 'date-fns';
+
+const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
+  process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
+);
 
 export async function getUsers(req: Request, res: Response): Promise<void> {
   const params = req.query;
@@ -15,7 +22,7 @@ export async function getUsers(req: Request, res: Response): Promise<void> {
   const page = Number(params.page) || 1;
   const limit = Number(params.limit) || 10;
   const skip = (page - 1) * limit;
-  
+
   const [users, totalUsers] = await Promise.all([
     prisma.user.findMany({
       where: {
@@ -88,11 +95,6 @@ export async function createUser(
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const userVerificationToken = JWT.sign(
-      { user: user },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '10m' }
-    );
 
     const createdUser = await prisma.user.create({
       data: {
@@ -109,9 +111,21 @@ export async function createUser(
             gender,
           },
         },
-        userVerificationToken: {
-          create: {
-            token: userVerificationToken,
+      },
+    });
+
+    const userVerificationToken = createJWT(
+      createdUser,
+      EMAIL_VERIFICATION_TOKEN_MINUTES
+    );
+
+    await prisma.userVerificationToken.create({
+      data: {
+        expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
+        token: userVerificationToken,
+        user: {
+          connect: {
+            id: createdUser.id,
           },
         },
       },
@@ -128,4 +142,60 @@ export async function createUser(
     }
     next(internalError());
   }
+}
+
+export async function sendVerificationEmail(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const { email } = req.body;
+
+  const user = await prisma.user.findUnique({
+    where: {
+      email,
+    },
+  });
+
+  if (!user || user.verified) {
+    next(notFoundError('User not found'));
+    return;
+  }
+
+  const now = new Date();
+
+  const existingVerificationToken =
+    await prisma.userVerificationToken.findFirst({
+      where: {
+        expiresAt: {
+          gt: now,
+        },
+        user: {
+          id: user.id,
+        },
+      },
+    });
+
+  let verificationToken = null;
+  if (existingVerificationToken) {
+    verificationToken = existingVerificationToken.token;
+  } else {
+    verificationToken = createJWT(user, EMAIL_VERIFICATION_TOKEN_MINUTES);
+    await prisma.userVerificationToken.create({
+      data: {
+        expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
+        token: verificationToken,
+        user: {
+          connect: {
+            id: user.id,
+          },
+        },
+      },
+    });
+  }
+
+  sendVerifyEmail(user.email, verificationToken, user);
+  res.status(200).json({
+    message: 'successfully send email',
+  });
 }

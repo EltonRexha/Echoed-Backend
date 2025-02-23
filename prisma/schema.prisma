@@ -154,6 +154,7 @@ model resetPasswordToken {
   token     String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  expiresAt DateTime
 
   @@map("reset_password_tokens")
 }
@@ -165,6 +166,7 @@ model userVerificationToken {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   userId    String
+  expiresAt DateTime
 
   @@map("user_verification_tokens")
 }
