@@ -168,6 +168,9 @@ model userVerificationToken {
   userId    String
   expiresAt DateTime
 
+  @@index([createdAt])
+  @@index([createdAt, userId])
+  @@index([expiresAt])
   @@map("user_verification_tokens")
 }
 

@@ -8,7 +8,8 @@ import { internalError, zodError } from '../errors/errors';
 import sendVerifyEmail from '../utils/sendVerifyMail';
 import createJWT from '../utils/createJWT';
 import notFoundError from '../errors/errorTypes/notFoundError';
-import { addMinutes } from 'date-fns';
+import { addMinutes, isAfter, subMinutes } from 'date-fns';
+import manyRequestsError from '../errors/errorTypes/manyRequestsError';
 
 const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
   process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
@@ -164,8 +165,9 @@ export async function sendVerificationEmail(
 
   const now = new Date();
 
-  const existingVerificationToken =
-    await prisma.userVerificationToken.findFirst({
+  //Get a tokens from newest to oldest
+  const existingVerificationTokens =
+    await prisma.userVerificationToken.findMany({
       where: {
         expiresAt: {
           gt: now,
@@ -174,25 +176,41 @@ export async function sendVerificationEmail(
           id: user.id,
         },
       },
-    });
-
-  let verificationToken = null;
-  if (existingVerificationToken) {
-    verificationToken = existingVerificationToken.token;
-  } else {
-    verificationToken = createJWT(user, EMAIL_VERIFICATION_TOKEN_MINUTES);
-    await prisma.userVerificationToken.create({
-      data: {
-        expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
-        token: verificationToken,
-        user: {
-          connect: {
-            id: user.id,
-          },
-        },
+      orderBy: {
+        createdAt: 'desc',
       },
     });
+
+  const newestStoredVerificationToken = existingVerificationTokens[0];
+
+  const EMAIL_TIMEOUT = subMinutes(
+    new Date(),
+    parseInt(process.env.EMAIL_VERIFICATION_RESEND_TOKEN_TIMEOUT as string)
+  );
+
+  // If a token was created some minutes ago and more
+  // than one tokens were created then don't send email to prevent spams
+  if (
+    isAfter(newestStoredVerificationToken.createdAt, EMAIL_TIMEOUT) &&
+    existingVerificationTokens.length > 1
+  ) {
+    next(manyRequestsError());
+    return;
   }
+
+  const verificationToken = createJWT(user, EMAIL_VERIFICATION_TOKEN_MINUTES);
+
+  await prisma.userVerificationToken.create({
+    data: {
+      expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
+      token: verificationToken,
+      user: {
+        connect: {
+          id: user.id,
+        },
+      },
+    },
+  });
 
   sendVerifyEmail(user.email, verificationToken, user);
   res.status(200).json({
