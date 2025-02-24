@@ -7,6 +7,7 @@ import createJWT from '../utils/createJWT';
 import sendVerifyEmail from '../utils/sendVerifyMail';
 import goneError from '../errors/errorTypes/goneError';
 import conflictError from '../errors/errorTypes/conflictError';
+import { userVerificationToken } from '@prisma/client';
 
 const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
   process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
@@ -17,7 +18,7 @@ export async function sendVerificationEmail(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const { email } = req.body;
+  const { email }: { email: string | undefined } = req.body;
 
   const user = await prisma.user.findUnique({
     where: {
@@ -48,7 +49,9 @@ export async function sendVerificationEmail(
       },
     });
 
-  const newestStoredVerificationToken = existingVerificationTokens[0];
+  const newestStoredVerificationToken = existingVerificationTokens[0] as
+    | userVerificationToken
+    | undefined;
 
   const EMAIL_TIMEOUT = subMinutes(
     new Date(),
@@ -57,12 +60,14 @@ export async function sendVerificationEmail(
 
   // If a token was created some minutes ago and more
   // than one tokens were created then don't send email to prevent spams
-  if (
-    isAfter(newestStoredVerificationToken.createdAt, EMAIL_TIMEOUT) &&
-    existingVerificationTokens.length > 1
-  ) {
-    next(manyRequestsError());
-    return;
+  if (newestStoredVerificationToken) {
+    if (
+      isAfter(newestStoredVerificationToken.createdAt, EMAIL_TIMEOUT) &&
+      existingVerificationTokens.length > 1
+    ) {
+      next(manyRequestsError());
+      return;
+    }
   }
 
   const verificationToken = createJWT(user, EMAIL_VERIFICATION_TOKEN_MINUTES);
@@ -90,11 +95,11 @@ export async function verifyEmail(
   res: Response,
   next: NextFunction
 ) {
-  const { token } = req.body;
+  const { token }: { token: string | undefined } = req.body;
 
   const verificationToken = await prisma.userVerificationToken.findUnique({
     where: {
-      token,
+      token: token,
     },
   });
 
