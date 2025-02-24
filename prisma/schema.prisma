@@ -42,6 +42,7 @@ model UserInfo {
   id          String   @id @default(uuid())
   gender      Gender
   dateOfBirth DateTime
+  country     String
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   User        User?
@@ -153,6 +154,7 @@ model resetPasswordToken {
   token     String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  expiresAt DateTime
 
   @@map("reset_password_tokens")
 }
@@ -164,7 +166,11 @@ model userVerificationToken {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   userId    String
+  expiresAt DateTime
 
+  @@index([createdAt])
+  @@index([createdAt, userId])
+  @@index([expiresAt])
   @@map("user_verification_tokens")
 }
 

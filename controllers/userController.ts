@@ -4,36 +4,50 @@ import userSchema from '../validations/userSchema';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import JWT from 'jsonwebtoken';
-import sendEmail from '../utils/sendMail';
 import { internalError, zodError } from '../errors/errors';
 import sendVerifyEmail from '../utils/sendVerifyMail';
+import createJWT from '../utils/createJWT';
+import notFoundError from '../errors/errorTypes/notFoundError';
+import { addMinutes, isAfter, subMinutes } from 'date-fns';
+import manyRequestsError from '../errors/errorTypes/manyRequestsError';
 
-export async function getUser(req: Request, res: Response): Promise<void> {
+const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
+  process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
+);
+
+export async function getUsers(req: Request, res: Response): Promise<void> {
   const params = req.query;
   const username = params.username as string | undefined;
   const email = params.email as string | undefined;
   const id = params.id as string | undefined;
+  const page = Number(params.page) || 1;
+  const limit = Number(params.limit) || 10;
+  const skip = (page - 1) * limit;
 
-  if (username === undefined && email === undefined && id === undefined) {
-    res.json([]);
-    return;
-  }
+  const [users, totalUsers] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        username: username,
+        email: email,
+        id: id,
+      },
+      select: {
+        email: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+      },
+      skip,
+      take: limit,
+    }),
+    prisma.user.count(),
+  ]);
 
-  const users = await prisma.user.findMany({
-    where: {
-      username: username,
-      email: email,
-      id: id,
-    },
-    select: {
-      email: true,
-      username: true,
-      firstName: true,
-      lastName: true,
-    },
+  res.json({
+    users,
+    page,
+    totalPages: Math.ceil(totalUsers / limit),
   });
-
-  res.json(users);
 }
 
 export async function createUser(
@@ -82,11 +96,6 @@ export async function createUser(
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const userVerificationToken = JWT.sign(
-      { user: user },
-      process.env.JWT_SECRET as string,
-      { expiresIn: '10m' }
-    );
 
     const createdUser = await prisma.user.create({
       data: {
@@ -98,13 +107,26 @@ export async function createUser(
         verified: false,
         userInfo: {
           create: {
+            country,
             dateOfBirth,
             gender,
           },
         },
-        userVerificationToken: {
-          create: {
-            token: userVerificationToken,
+      },
+    });
+
+    const userVerificationToken = createJWT(
+      createdUser,
+      EMAIL_VERIFICATION_TOKEN_MINUTES
+    );
+
+    await prisma.userVerificationToken.create({
+      data: {
+        expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
+        token: userVerificationToken,
+        user: {
+          connect: {
+            id: createdUser.id,
           },
         },
       },
@@ -117,8 +139,81 @@ export async function createUser(
   } catch (e) {
     if (e instanceof z.ZodError) {
       next(zodError(e.errors));
+      return;
     }
-    console.log(e);
     next(internalError());
   }
+}
+
+export async function sendVerificationEmail(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const { email } = req.body;
+
+  const user = await prisma.user.findUnique({
+    where: {
+      email,
+    },
+  });
+
+  if (!user || user.verified) {
+    next(notFoundError('User not found'));
+    return;
+  }
+
+  const now = new Date();
+
+  //Get a tokens from newest to oldest
+  const existingVerificationTokens =
+    await prisma.userVerificationToken.findMany({
+      where: {
+        expiresAt: {
+          gt: now,
+        },
+        user: {
+          id: user.id,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+  const newestStoredVerificationToken = existingVerificationTokens[0];
+
+  const EMAIL_TIMEOUT = subMinutes(
+    new Date(),
+    parseInt(process.env.EMAIL_VERIFICATION_RESEND_TOKEN_TIMEOUT as string)
+  );
+
+  // If a token was created some minutes ago and more
+  // than one tokens were created then don't send email to prevent spams
+  if (
+    isAfter(newestStoredVerificationToken.createdAt, EMAIL_TIMEOUT) &&
+    existingVerificationTokens.length > 1
+  ) {
+    next(manyRequestsError());
+    return;
+  }
+
+  const verificationToken = createJWT(user, EMAIL_VERIFICATION_TOKEN_MINUTES);
+
+  await prisma.userVerificationToken.create({
+    data: {
+      expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
+      token: verificationToken,
+      user: {
+        connect: {
+          id: user.id,
+        },
+      },
+    },
+  });
+
+  sendVerifyEmail(user.email, verificationToken, user);
+  res.status(200).json({
+    message: 'successfully send email',
+  });
 }
