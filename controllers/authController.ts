@@ -27,14 +27,14 @@ export function sendTokensWithCookies(req: Request, res: Response) {
   const link = new URL(TOKENS_ENDPOINT, FRONTEND_URL);
 
   res.cookie('access_token', accessToken, {
-    httpOnly: true,
-    secure: true,
+    httpOnly: false,
+    secure: false,
     sameSite: 'strict',
   });
 
   res.cookie('refresh_token', refreshToken, {
-    httpOnly: true,
-    secure: true,
+    httpOnly: false,
+    secure: false,
     sameSite: 'strict',
   });
 
