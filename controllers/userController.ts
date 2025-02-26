@@ -105,6 +105,7 @@ export async function createUser(
         password: passwordHash,
         username: username,
         verified: false,
+        userCompleted: true,
         userInfo: {
           create: {
             country,
