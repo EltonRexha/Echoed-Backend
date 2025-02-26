@@ -20,6 +20,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     return;
   }
 
+  console.log(err);
+
   const internal = internalError();
   res.status(internal.code).json(internal.jsonError);
 });

@@ -10,44 +10,54 @@ import createJWT from '../utils/createJWT';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import { addMinutes, isAfter, subMinutes } from 'date-fns';
 import manyRequestsError from '../errors/errorTypes/manyRequestsError';
+import badRequestError from '../errors/errorTypes/badRequestError';
+import getUserSchema from '../validations/getUserSchema';
 
 const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
   process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
 );
 
-export async function getUsers(req: Request, res: Response): Promise<void> {
-  const params = req.query;
-  const username = params.username as string | undefined;
-  const email = params.email as string | undefined;
-  const id = params.id as string | undefined;
-  const page = Number(params.page) || 1;
-  const limit = Number(params.limit) || 10;
-  const skip = (page - 1) * limit;
+export async function getUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const params = getUserSchema.parse(req.params);
+    const username = params.username;
+    const email = params.email;
+    const id = params.id;
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 10;
+    const skip = (page - 1) * limit;
 
-  const [users, totalUsers] = await Promise.all([
-    prisma.user.findMany({
-      where: {
-        username: username,
-        email: email,
-        id: id,
-      },
-      select: {
-        email: true,
-        username: true,
-        firstName: true,
-        lastName: true,
-      },
-      skip,
-      take: limit,
-    }),
-    prisma.user.count(),
-  ]);
+    const [users, totalUsers] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          username: username,
+          email: email,
+          id: id,
+        },
+        select: {
+          email: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.user.count(),
+    ]);
 
-  res.json({
-    users,
-    page,
-    totalPages: Math.ceil(totalUsers / limit),
-  });
+    res.json({
+      users,
+      page,
+      totalPages: Math.ceil(totalUsers / limit),
+    });
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      next(zodError(e.errors));
+      return;
+    }
+    next(internalError());
+  }
 }
 
 export async function createUser(

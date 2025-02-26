@@ -13,8 +13,6 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        console.log(profile);
-
         const email = profile.emails && profile.emails[0].value;
         const firstName = profile.name?.givenName;
         const lastName = profile.name?.familyName;
@@ -24,14 +22,14 @@ passport.use(
           return;
         }
 
-        const user = prisma.user.findUnique({
+        const user = await prisma.user.findUnique({
           where: {
             email,
           },
         });
 
         if (!user) {
-          const user = prisma.user.create({
+          const user = await prisma.user.create({
             data: {
               email,
               firstName,

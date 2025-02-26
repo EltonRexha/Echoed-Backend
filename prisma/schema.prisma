@@ -34,7 +34,7 @@ model User {
   userPreferedTag       userPreferedTag[]
   userCompleted         Boolean
   ProfileImage          Media?                   @relation(fields: [mediaId], references: [id])
-  mediaId               String
+  mediaId               String?
 
   @@index([email])
   @@index([username])

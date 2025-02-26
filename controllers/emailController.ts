@@ -18,7 +18,12 @@ export async function sendVerificationEmail(
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const { email }: { email: string | undefined } = req.body;
+  const { email } = req.body;
+
+  if (typeof email !== 'string') {
+    next(notFoundError('User not found'));
+    return;
+  }
 
   const user = await prisma.user.findUnique({
     where: {
@@ -95,7 +100,12 @@ export async function verifyEmail(
   res: Response,
   next: NextFunction
 ) {
-  const { token }: { token: string | undefined } = req.body;
+  const { token } = req.body;
+
+  if (typeof token !== 'string') {
+    next(notFoundError('Token not found'));
+    return;
+  }
 
   const verificationToken = await prisma.userVerificationToken.findUnique({
     where: {

@@ -10,7 +10,33 @@ export function sendTokens(req: Request, res: Response) {
   const refreshToken = createRefreshToken(user);
 
   res.status(200).json({
-    accessToken,
     refreshToken,
+    accessToken,
   });
+}
+
+const FRONTEND_URL = process.env.FRONT_URL as string;
+const TOKENS_ENDPOINT = process.env.SEND_TOKENS_ENDPOINT as string;
+
+export function sendTokensWithCookies(req: Request, res: Response) {
+  const user = req.user as User;
+
+  const accessToken = createAccessToken(user);
+  const refreshToken = createRefreshToken(user);
+
+  const link = new URL(TOKENS_ENDPOINT, FRONTEND_URL);
+
+  res.cookie('access_token', accessToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+  });
+
+  res.cookie('refresh_token', refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+  });
+
+  res.redirect(link.toString());
 }

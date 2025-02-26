@@ -8,7 +8,7 @@ import passport from 'passport';
 import '../config/passport';
 import unautherizedError from '../errors/errorTypes/unautherizedError';
 import createJWT from '../utils/createJWT';
-import { sendTokens } from '../controllers/authController';
+import { sendTokensWithCookies } from '../controllers/authController';
 
 const router = Router();
 
@@ -19,14 +19,18 @@ router.post('/user/email/verify', verifyEmail);
 router.get(
   '/google',
   passport.authenticate('google', {
+    session: false,
     scope: ['profile', 'email'],
   })
 );
 
 router.get(
   '/google/redirect',
-  passport.authenticate('google', { failureRedirect: '/google/failed' }),
-  sendTokens
+  passport.authenticate('google', {
+    failureRedirect: '/google/failed',
+    session: false,
+  }),
+  sendTokensWithCookies
 );
 
 router.get('/google/failed', (req, res, next) => {
