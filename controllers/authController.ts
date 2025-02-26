@@ -9,8 +9,13 @@ export function sendTokens(req: Request, res: Response) {
   const accessToken = createAccessToken(user);
   const refreshToken = createRefreshToken(user);
 
+  res.cookie('refresh_token', refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+  });
+
   res.status(200).json({
-    refreshToken,
     accessToken,
   });
 }
@@ -18,7 +23,7 @@ export function sendTokens(req: Request, res: Response) {
 const FRONTEND_URL = process.env.FRONT_URL as string;
 const TOKENS_ENDPOINT = process.env.SEND_TOKENS_ENDPOINT as string;
 
-export function sendTokensWithCookies(req: Request, res: Response) {
+export function sendRedirectFront(req: Request, res: Response) {
   const user = req.user as User;
 
   const accessToken = createAccessToken(user);
@@ -33,8 +38,8 @@ export function sendTokensWithCookies(req: Request, res: Response) {
   });
 
   res.cookie('refresh_token', refreshToken, {
-    httpOnly: false,
-    secure: false,
+    httpOnly: true,
+    secure: true,
     sameSite: 'strict',
   });
 

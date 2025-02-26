@@ -8,7 +8,7 @@ import passport from 'passport';
 import '../config/passport';
 import unautherizedError from '../errors/errorTypes/unautherizedError';
 import createJWT from '../utils/createJWT';
-import { sendTokensWithCookies } from '../controllers/authController';
+import { sendRedirectFront } from '../controllers/authController';
 
 const router = Router();
 
@@ -30,7 +30,7 @@ router.get(
     failureRedirect: '/google/failed',
     session: false,
   }),
-  sendTokensWithCookies
+  sendRedirectFront
 );
 
 router.get('/google/failed', (req, res, next) => {
