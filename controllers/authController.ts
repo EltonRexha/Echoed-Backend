@@ -30,6 +30,7 @@ export async function sendTokens(req: Request, res: Response) {
 const FRONTEND_URL = process.env.FRONT_URL as string;
 const TOKENS_ENDPOINT = process.env.SEND_TOKENS_ENDPOINT as string;
 
+
 export async function sendRedirectFront(req: Request, res: Response) {
   const user = req.user as User;
 
