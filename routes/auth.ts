@@ -37,4 +37,18 @@ router.get('/google/failed', (req, res, next) => {
   next(unautherizedError('Could not authenticate with google'));
 });
 
+router.get(
+  '/github',
+  passport.authenticate('github', {
+    session: false,
+  })
+);
+
+router.get(
+  '/github/redirect',
+  passport.authenticate('github', {
+    session: false,
+  }),
+  sendRedirectFront
+);
 export default router;

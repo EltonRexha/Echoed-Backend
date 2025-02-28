@@ -16,23 +16,37 @@ CREATE TABLE "users" (
     "last_name" TEXT NOT NULL,
     "verified" BOOLEAN NOT NULL,
     "password" TEXT NOT NULL,
-    "user_status" "UserStatus" NOT NULL,
+    "user_status" "UserStatus" NOT NULL DEFAULT 'active',
+    "userInfoId" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "postsId" TEXT,
+    "mediaId" TEXT,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
+CREATE TABLE "gmailUser" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "first_name" TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+
+    CONSTRAINT "gmailUser_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "userInformation" (
-    "usersId" TEXT NOT NULL,
+    "id" TEXT NOT NULL,
     "gender" "Gender" NOT NULL,
-    "dateOfBirth" TIMESTAMP(3) NOT NULL,
+    "dateOfBirth" TIMESTAMP(3),
+    "country" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "userInformation_pkey" PRIMARY KEY ("usersId")
+    CONSTRAINT "userInformation_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -126,6 +140,7 @@ CREATE TABLE "reset_password_tokens" (
     "token" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "reset_password_tokens_pkey" PRIMARY KEY ("id")
 );
@@ -133,9 +148,11 @@ CREATE TABLE "reset_password_tokens" (
 -- CreateTable
 CREATE TABLE "user_verification_tokens" (
     "id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
     "userId" TEXT NOT NULL,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "user_verification_tokens_pkey" PRIMARY KEY ("id")
 );
@@ -199,7 +216,37 @@ CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_userInfoId_key" ON "users"("userInfoId");
+
+-- CreateIndex
+CREATE INDEX "users_email_idx" ON "users"("email");
+
+-- CreateIndex
+CREATE INDEX "users_username_idx" ON "users"("username");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "gmailUser_email_key" ON "gmailUser"("email");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "post_tags_name_key" ON "post_tags"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "refresh_tokens_token_key" ON "refresh_tokens"("token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "reset_password_tokens_token_key" ON "reset_password_tokens"("token");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_verification_tokens_token_key" ON "user_verification_tokens"("token");
+
+-- CreateIndex
+CREATE INDEX "user_verification_tokens_created_at_idx" ON "user_verification_tokens"("created_at");
+
+-- CreateIndex
+CREATE INDEX "user_verification_tokens_created_at_userId_idx" ON "user_verification_tokens"("created_at", "userId");
+
+-- CreateIndex
+CREATE INDEX "user_verification_tokens_expiresAt_idx" ON "user_verification_tokens"("expiresAt");
 
 -- CreateIndex
 CREATE INDEX "_follow_B_index" ON "_follow"("B");
@@ -217,7 +264,13 @@ CREATE INDEX "_PostTopostTags_B_index" ON "_PostTopostTags"("B");
 CREATE INDEX "_members_B_index" ON "_members"("B");
 
 -- AddForeignKey
-ALTER TABLE "userInformation" ADD CONSTRAINT "userInformation_usersId_fkey" FOREIGN KEY ("usersId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "users" ADD CONSTRAINT "users_userInfoId_fkey" FOREIGN KEY ("userInfoId") REFERENCES "userInformation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "users" ADD CONSTRAINT "users_mediaId_fkey" FOREIGN KEY ("mediaId") REFERENCES "Media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "gmailUser" ADD CONSTRAINT "gmailUser_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "posts" ADD CONSTRAINT "posts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

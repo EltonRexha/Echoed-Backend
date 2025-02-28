@@ -1,9 +1,8 @@
-import { User } from '@prisma/client';
 import JWT from 'jsonwebtoken';
 import ms from 'ms';
 
 export default function (
-  user: User,
+  user: { id: string; OAuth?: boolean },
   expiresIn: number,
   unit: 'm' | 'h' | 'd' = 'm'
 ): string {
@@ -13,6 +12,7 @@ export default function (
     {
       user: {
         id: user.id,
+        OAuth: !!user.OAuth,
       },
     },
     process.env.JWT_SECRET as string,
