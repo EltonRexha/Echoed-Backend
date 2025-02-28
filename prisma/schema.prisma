@@ -9,12 +9,12 @@ datasource db {
 
 model User {
   id                    String                  @id @default(uuid())
-  username              String?                 @unique
+  username              String                  @unique
   email                 String                  @unique
   firstName             String                  @map("first_name")
   lastName              String                  @map("last_name")
   verified              Boolean
-  password              String?
+  password              String
   userStatus            UserStatus              @default(active) @map("user_status")
   followers             User[]                  @relation(name: "follow")
   following             User[]                  @relation(name: "follow")
@@ -32,13 +32,52 @@ model User {
   refreshTokens         refreshTokens[]
   userVerificationToken userVerificationToken[]
   userPreferedTag       userPreferedTag[]
-  userCompleted         Boolean
-  ProfileImage          Media?                   @relation(fields: [mediaId], references: [id])
+  ProfileImage          Media?                  @relation(fields: [mediaId], references: [id])
   mediaId               String?
+  googleUser            GoogleUser?
+  githubUser            GithubUser?
+  UserType              UserType                @default(local)
 
   @@index([email])
   @@index([username])
   @@map("users")
+}
+
+model GoogleUser {
+  id           String   @unique @default(uuid())
+  googleUserId String
+  email        String   @unique
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  OAuth        Boolean  @default(true)
+  UserType     UserType @default(google)
+
+  profileUrl String?
+
+  user          User?           @relation(fields: [userId], references: [id])
+  userId        String?         @unique
+  refreshTokens refreshTokens[]
+
+  @@id([googleUserId, id])
+  @@index([email])
+  @@map("google_users")
+}
+
+model GithubUser {
+  id           String   @unique @default(uuid())
+  githubUserId String
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  OAuth        Boolean  @default(true)
+  UserType     UserType @default(github)
+  profileUrl   String?
+
+  user          User?           @relation(fields: [userId], references: [id])
+  userId        String?         @unique
+  refreshTokens refreshTokens[]
+
+  @@id([githubUserId, id])
+  @@map("github_users")
 }
 
 model UserInfo {
@@ -142,13 +181,17 @@ model Message {
 }
 
 model refreshTokens {
-  id        String   @id @default(uuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  token     String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  revoked   Boolean
+  id           String      @id @default(uuid())
+  token        String      @unique
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  revoked      Boolean     @default(false)
+  User         User?       @relation(fields: [userId], references: [id])
+  userId       String?
+  GithubUser   GithubUser? @relation(fields: [githubUserId], references: [id])
+  githubUserId String?
+  GoogleUser   GoogleUser? @relation(fields: [googleUserId], references: [id])
+  googleUserId String?
 
   @@map("refresh_tokens")
 }
@@ -190,6 +233,12 @@ model userPreferedTag {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@map("user_prefered_tags")
+}
+
+enum UserType {
+  local
+  github
+  google
 }
 
 enum UserStatus {

@@ -1,46 +1,54 @@
-import { User } from '@prisma/client';
 import { Request, Response } from 'express';
 import createAccessToken from '../utils/createAccessToken';
 import createRefreshToken from '../utils/createRefreshToken';
+import { User } from '../types/user';
 
-export function sendTokens(req: Request, res: Response) {
+export async function sendTokens(req: Request, res: Response) {
   const user = req.user as User;
 
   const accessToken = createAccessToken(user);
-  const refreshToken = createRefreshToken(user);
+  const refreshToken = await createRefreshToken(user);
+
+  res.cookie('access_token', accessToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+  });
 
   res.cookie('refresh_token', refreshToken, {
     httpOnly: true,
     secure: true,
-    sameSite: 'strict',
+    sameSite: 'none',
+    path: '/api/v1/auth/refresh',
   });
 
   res.status(200).json({
-    accessToken,
+    message: 'Successfully authenticated',
   });
 }
 
 const FRONTEND_URL = process.env.FRONT_URL as string;
 const TOKENS_ENDPOINT = process.env.SEND_TOKENS_ENDPOINT as string;
 
-export function sendRedirectFront(req: Request, res: Response) {
+export async function sendRedirectFront(req: Request, res: Response) {
   const user = req.user as User;
 
   const accessToken = createAccessToken(user);
-  const refreshToken = createRefreshToken(user);
+  const refreshToken = await createRefreshToken(user);
 
   const link = new URL(TOKENS_ENDPOINT, FRONTEND_URL);
 
   res.cookie('access_token', accessToken, {
-    httpOnly: false,
-    secure: false,
-    sameSite: 'strict',
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
   });
 
   res.cookie('refresh_token', refreshToken, {
     httpOnly: true,
     secure: true,
-    sameSite: 'strict',
+    sameSite: 'none',
+    path: '/api/v1/auth/refresh',
   });
 
   res.redirect(link.toString());

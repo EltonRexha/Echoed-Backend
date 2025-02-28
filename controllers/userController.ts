@@ -17,7 +17,11 @@ const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
   process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
 );
 
-export async function getUsers(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function getUsers(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const params = getUserSchema.parse(req.params);
     const username = params.username;
@@ -115,7 +119,6 @@ export async function createUser(
         password: passwordHash,
         username: username,
         verified: false,
-        userCompleted: true,
         userInfo: {
           create: {
             country,
