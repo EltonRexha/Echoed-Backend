@@ -14,12 +14,11 @@ model User {
   firstName             String                  @map("first_name")
   lastName              String                  @map("last_name")
   verified              Boolean
-  password              String
+  password              String?
   userStatus            UserStatus              @default(active) @map("user_status")
   followers             User[]                  @relation(name: "follow")
   following             User[]                  @relation(name: "follow")
-  userInfo              UserInfo                @relation(fields: [userInfoId], references: [id], onDelete: Cascade)
-  userInfoId            String                  @unique
+  UserInfo              UserInfo?
   posts                 Post[]
   likedPosts            Post[]                  @relation(name: "likes")
   savedPosts            Post[]                  @relation(name: "saved")
@@ -48,7 +47,7 @@ model GoogleUser {
   googleUserId String
   email        String   @unique
   firstName    String   @map("first_name")
-  lastName     String   @map("last_name")
+  lastName     String?  @map("last_name")
   OAuth        Boolean  @default(true)
   UserType     UserType @default(google)
 
@@ -81,13 +80,14 @@ model GithubUser {
 }
 
 model UserInfo {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   gender      Gender
-  dateOfBirth DateTime?
-  country     String?
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  User        User?
+  dateOfBirth DateTime
+  country     String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  User        User     @relation(fields: [userId], references: [id])
+  userId      String   @unique
 
   @@map("userInformation")
 }
@@ -208,7 +208,7 @@ model resetPasswordToken {
 
 model userVerificationToken {
   id        String   @id @default(uuid())
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token     String   @unique
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

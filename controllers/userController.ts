@@ -3,15 +3,13 @@ import { prisma } from '../db/client';
 import userSchema from '../validations/userSchema';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import JWT from 'jsonwebtoken';
-import { internalError, zodError } from '../errors/errors';
+import { zodError } from '../errors/errors';
 import sendVerifyEmail from '../utils/sendVerifyMail';
 import createJWT from '../utils/createJWT';
-import notFoundError from '../errors/errorTypes/notFoundError';
-import { addMinutes, isAfter, subMinutes } from 'date-fns';
-import manyRequestsError from '../errors/errorTypes/manyRequestsError';
-import badRequestError from '../errors/errorTypes/badRequestError';
+import { addMinutes } from 'date-fns';
 import getUserSchema from '../validations/getUserSchema';
+import findUser from '../utils/findUser';
+import badRequestError from '../errors/errorTypes/badRequestError';
 
 const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
   process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
@@ -60,7 +58,7 @@ export async function getUsers(
       next(zodError(e.errors));
       return;
     }
-    next(internalError());
+    next(e);
   }
 }
 
@@ -86,26 +84,13 @@ export async function createUser(
       gender,
     } = user;
 
-    const userWithEmail = !!(await prisma.user.findUnique({
-      where: {
-        email: email,
-      },
-    }));
+    const foundUser = await findUser(username, email);
+    const [localUser, googleUser] = foundUser;
 
-    const userWithUsername = !!(await prisma.user.findUnique({
-      where: {
-        username: username,
-      },
-    }));
-
-    const userExists = userWithEmail || userWithUsername;
+    const userExists = !!(localUser || googleUser);
 
     if (userExists) {
-      res.status(400).json({
-        error: {
-          message: 'User with this email or username already exists',
-        },
-      });
+      next(badRequestError('User with this email or username already exists'));
       return;
     }
 
@@ -119,7 +104,7 @@ export async function createUser(
         password: passwordHash,
         username: username,
         verified: false,
-        userInfo: {
+        UserInfo: {
           create: {
             country,
             dateOfBirth,
@@ -155,6 +140,6 @@ export async function createUser(
       next(zodError(e.errors));
       return;
     }
-    next(internalError());
+    next(e);
   }
 }
