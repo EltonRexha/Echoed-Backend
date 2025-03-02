@@ -2,7 +2,7 @@ import JWT from 'jsonwebtoken';
 import ms from 'ms';
 
 export default function (
-  user: { id: string; OAuth?: boolean },
+  user: { id: string; OAuth?: boolean; access?: boolean },
   expiresIn: number,
   unit: 'm' | 'h' | 'd' = 'm'
 ): string {
@@ -13,6 +13,7 @@ export default function (
       user: {
         id: user.id,
         OAuth: !!user.OAuth,
+        access: !!user.access,
       },
     },
     process.env.JWT_SECRET as string,

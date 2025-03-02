@@ -2,5 +2,5 @@ import { User } from '../types/user';
 import createJWT from './createJWT';
 
 export default function (user: User): string {
-    return createJWT(user, 15);
+  return createJWT({ ...user, access: true }, 15);
 }

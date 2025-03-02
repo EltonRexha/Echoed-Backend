@@ -116,7 +116,7 @@ passport.use(
           },
         });
 
-        //Normal user found
+        //Local user found
         if (user) {
           return done(null, user);
         }

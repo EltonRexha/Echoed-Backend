@@ -4,12 +4,19 @@ import apiRouter from './routes/api';
 import cors from 'cors';
 import CustomError from './errors/customError';
 import { internalError } from './errors/errors';
+import cookieParser from 'cookie-parser';
 dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    credentials: true,
+    origin: process.env.FRONT_URL,
+  })
+);
 app.use(express.json());
+app.use(cookieParser());
 app.use('/api/v1', apiRouter);
 
 const PORT = process.env.PORT || 3000;
