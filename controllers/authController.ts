@@ -1,9 +1,26 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import createAccessToken from '../utils/createAccessToken';
 import createRefreshToken from '../utils/createRefreshToken';
 import { User } from '../types/user';
+import loginSchema from '../validations/loginSchema';
+import authenticationTokenSchema from '../validations/authenticationTokenSchema';
+import { z } from 'zod';
+import { zodError } from '../errors/errors';
+import { prisma } from '../db/client';
+import bcrypt from 'bcryptjs';
+import unautherizedError from '../errors/errorTypes/unautherizedError';
+import forbiddenError from '../errors/errorTypes/forbiddenError';
+import badRequestError from '../errors/errorTypes/badRequestError';
+import notFoundError from '../errors/errorTypes/notFoundError';
+import JWT from 'jsonwebtoken';
+import tokenExpired from '../utils/tokenExpired';
+import asyncHandler from 'express-async-handler';
 
-export async function sendTokens(req: Request, res: Response) {
+const JWT_SECRET = process.env.JWT_SECRET as string;
+const FRONTEND_URL = process.env.FRONT_URL as string;
+const TOKENS_ENDPOINT = process.env.SEND_TOKENS_ENDPOINT as string;
+
+export const sendTokens = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user as User;
 
   const accessToken = createAccessToken(user);
@@ -25,32 +42,180 @@ export async function sendTokens(req: Request, res: Response) {
   res.status(200).json({
     message: 'Successfully authenticated',
   });
-}
+});
 
-const FRONTEND_URL = process.env.FRONT_URL as string;
-const TOKENS_ENDPOINT = process.env.SEND_TOKENS_ENDPOINT as string;
+export const login = [
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { username, email, password } = loginSchema.parse(req.body);
 
+      //User exists?
+      const user = await prisma.user.findUnique({
+        where: {
+          email,
+          username,
+        },
+      });
 
-export async function sendRedirectFront(req: Request, res: Response) {
-  const user = req.user as User;
+      if (!user) {
+        next(unautherizedError('Invalid credentials'));
+        return;
+      }
 
-  const accessToken = createAccessToken(user);
-  const refreshToken = await createRefreshToken(user);
+      if (!user.password) {
+        next(unautherizedError('Please login with your OAuth provider'));
+        return;
+      }
 
-  const link = new URL(TOKENS_ENDPOINT, FRONTEND_URL);
+      const passwordCorrect = await bcrypt.compare(password, user.password);
 
-  res.cookie('access_token', accessToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'none',
-  });
+      if (!passwordCorrect) {
+        next(unautherizedError('Invalid credentials'));
+        return;
+      }
 
-  res.cookie('refresh_token', refreshToken, {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'none',
-    path: '/api/v1/auth/refresh',
-  });
+      if (!user.verified) {
+        next(forbiddenError('Please verify your email'));
+        return;
+      }
 
-  res.redirect(link.toString());
-}
+      req.user = user;
+      next();
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        next(zodError(e.errors));
+        return;
+      }
+      next(e);
+    }
+  }),
+  sendTokens,
+];
+
+export const refreshToken = [
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    if (
+      !req.cookies ||
+      !('refresh_token' in req.cookies) ||
+      typeof req.cookies.refresh_token !== 'string'
+    ) {
+      next(badRequestError('Refresh token not provided'));
+      return;
+    }
+
+    const { refresh_token: token } = req.cookies;
+
+    //Check if the token is valid and not revoked
+
+    const storedToken = await prisma.refreshTokens.findUnique({
+      where: {
+        token: token,
+      },
+    });
+
+    if (!storedToken) {
+      next(notFoundError('Token not found'));
+      return;
+    }
+
+    if (storedToken.revoked) {
+      next(unautherizedError('Token revoked'));
+      return;
+    }
+
+    try {
+      const parsedToken = JWT.verify(token, JWT_SECRET);
+      const {
+        exp,
+        user: { id: userId, OAuth },
+      } = authenticationTokenSchema.parse(parsedToken);
+
+      //If token expired
+      if (tokenExpired(exp)) {
+        next(unautherizedError('Token expired'));
+        return;
+      }
+
+      if (OAuth) {
+        //This token is for OAuth users
+        if (storedToken.githubUserId) {
+          const githubUser = await prisma.githubUser.findUnique({
+            where: {
+              id: userId,
+            },
+          });
+
+          if (!githubUser) {
+            next(notFoundError('User not found'));
+            return;
+          }
+
+          req.user = githubUser;
+          next();
+          return;
+        }
+
+        if (storedToken.googleUserId) {
+          const googleUser = await prisma.googleUser.findUnique({
+            where: {
+              id: userId,
+            },
+          });
+
+          if (!googleUser) {
+            next(notFoundError('User not found'));
+            return;
+          }
+
+          req.user = googleUser;
+          next(googleUser);
+          return;
+        }
+      } else {
+        const localUser = await prisma.user.findUnique({
+          where: {
+            id: userId,
+          },
+        });
+
+        if (!localUser) {
+          next(notFoundError('User not found'));
+          return;
+        }
+
+        req.user = localUser;
+        next();
+        return;
+      }
+    } catch (e) {
+      next(unautherizedError('Invalid token'));
+    }
+  }),
+  sendTokens,
+];
+
+export const sendRedirectFront = asyncHandler(
+  async (req: Request, res: Response) => {
+    const user = req.user as User;
+
+    const accessToken = createAccessToken(user);
+    const refreshToken = await createRefreshToken(user);
+
+    const link = new URL(TOKENS_ENDPOINT, FRONTEND_URL);
+
+    res.cookie('access_token', accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+    });
+
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/api/v1/auth/refresh',
+    });
+
+    res.redirect(link.toString());
+  }
+);

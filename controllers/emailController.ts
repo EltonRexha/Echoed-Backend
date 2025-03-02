@@ -8,153 +8,150 @@ import sendVerifyEmail from '../utils/sendVerifyMail';
 import goneError from '../errors/errorTypes/goneError';
 import conflictError from '../errors/errorTypes/conflictError';
 import { userVerificationToken } from '@prisma/client';
+import asyncHandler from 'express-async-handler';
 
 const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
   process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
 );
 
-export async function sendVerificationEmail(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  const { email } = req.body;
+export const sendVerificationEmail = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { email } = req.body;
 
-  if (typeof email !== 'string') {
-    next(notFoundError('User not found'));
-    return;
-  }
+    if (typeof email !== 'string') {
+      next(notFoundError('User not found'));
+      return;
+    }
 
-  const user = await prisma.user.findUnique({
-    where: {
-      email,
-    },
-  });
-
-  if (!user || user.verified) {
-    next(notFoundError('User not found'));
-    return;
-  }
-
-  const now = new Date();
-
-  //Get a tokens from newest to oldest
-  const existingVerificationTokens =
-    await prisma.userVerificationToken.findMany({
+    const user = await prisma.user.findUnique({
       where: {
-        expiresAt: {
-          gt: now,
-        },
-        user: {
-          id: user.id,
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
+        email,
       },
     });
 
-  const newestStoredVerificationToken = existingVerificationTokens[0] as
-    | userVerificationToken
-    | undefined;
-
-  const EMAIL_TIMEOUT = subMinutes(
-    new Date(),
-    parseInt(process.env.EMAIL_VERIFICATION_RESEND_TOKEN_TIMEOUT as string)
-  );
-
-  // If a token was created some minutes ago and more
-  // than one tokens were created then don't send email to prevent spams
-  if (newestStoredVerificationToken) {
-    if (
-      isAfter(newestStoredVerificationToken.createdAt, EMAIL_TIMEOUT) &&
-      existingVerificationTokens.length > 1
-    ) {
-      next(manyRequestsError());
+    if (!user || user.verified) {
+      next(notFoundError('User not found'));
       return;
     }
-  }
 
-  const verificationToken = createJWT(user, EMAIL_VERIFICATION_TOKEN_MINUTES);
+    const now = new Date();
 
-  await prisma.userVerificationToken.create({
-    data: {
-      expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
-      token: verificationToken,
-      user: {
-        connect: {
-          id: user.id,
+    //Get a tokens from newest to oldest
+    const existingVerificationTokens =
+      await prisma.userVerificationToken.findMany({
+        where: {
+          expiresAt: {
+            gt: now,
+          },
+          user: {
+            id: user.id,
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+    const newestStoredVerificationToken = existingVerificationTokens[0] as
+      | userVerificationToken
+      | undefined;
+
+    const EMAIL_TIMEOUT = subMinutes(
+      new Date(),
+      parseInt(process.env.EMAIL_VERIFICATION_RESEND_TOKEN_TIMEOUT as string)
+    );
+
+    // If a token was created some minutes ago and more
+    // than one tokens were created then don't send email to prevent spams
+    if (newestStoredVerificationToken) {
+      if (
+        isAfter(newestStoredVerificationToken.createdAt, EMAIL_TIMEOUT) &&
+        existingVerificationTokens.length > 1
+      ) {
+        next(manyRequestsError());
+        return;
+      }
+    }
+
+    const verificationToken = createJWT(user, EMAIL_VERIFICATION_TOKEN_MINUTES);
+
+    await prisma.userVerificationToken.create({
+      data: {
+        expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
+        token: verificationToken,
+        user: {
+          connect: {
+            id: user.id,
+          },
         },
       },
-    },
-  });
+    });
 
-  sendVerifyEmail(user.email, verificationToken, user);
-  res.status(200).json({
-    message: 'successfully send email',
-  });
-}
-
-export async function verifyEmail(
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  const { token } = req.body;
-
-  if (typeof token !== 'string') {
-    next(notFoundError('Token not found'));
-    return;
+    sendVerifyEmail(user.email, verificationToken, user);
+    res.status(200).json({
+      message: 'successfully send email',
+    });
   }
+);
 
-  const verificationToken = await prisma.userVerificationToken.findUnique({
-    where: {
-      token: token,
-    },
-  });
+export const verifyEmail = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { token } = req.body;
 
-  if (!verificationToken) {
-    next(notFoundError('Token not found'));
-    return;
-  }
+    if (typeof token !== 'string') {
+      next(notFoundError('Token not found'));
+      return;
+    }
 
-  const now = new Date();
+    const verificationToken = await prisma.userVerificationToken.findUnique({
+      where: {
+        token: token,
+      },
+    });
 
-  if (isAfter(now, verificationToken.expiresAt)) {
-    next(goneError('Token expired'));
-    return;
-  }
+    if (!verificationToken) {
+      next(notFoundError('Token not found'));
+      return;
+    }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      userVerificationToken: {
-        some: {
-          token,
+    const now = new Date();
+
+    if (isAfter(now, verificationToken.expiresAt)) {
+      next(goneError('Token expired'));
+      return;
+    }
+
+    const user = await prisma.user.findFirst({
+      where: {
+        userVerificationToken: {
+          some: {
+            token,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!user) {
-    next(notFoundError('Token not found'));
-    return;
+    if (!user) {
+      next(notFoundError('Token not found'));
+      return;
+    }
+
+    if (user.verified) {
+      next(conflictError('Email already verified'));
+      return;
+    }
+
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        verified: true,
+      },
+    });
+
+    res.status(200).json({
+      message: 'User successfully verified',
+    });
   }
-
-  if (user.verified) {
-    next(conflictError('Email already verified'));
-    return;
-  }
-
-  await prisma.user.update({
-    where: {
-      id: user.id,
-    },
-    data: {
-      verified: true,
-    },
-  });
-
-  res.status(200).json({
-    message: 'User successfully verified',
-  });
-}
+);

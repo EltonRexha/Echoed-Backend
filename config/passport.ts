@@ -23,7 +23,7 @@ passport.use(
         const photo: undefined | string =
           profile.photos && profile.photos[0].value;
 
-        if (!email || !firstName || !lastName) {
+        if (!email || !firstName) {
           done('data not provided from google');
           return;
         }
@@ -42,8 +42,17 @@ passport.use(
 
         //Normal user found
         if (user) {
-          done(null, user);
-          return;
+          if (user.verified) {
+            //Authenticated as that normal user
+            done(null, user);
+            return;
+          }
+          //Delete the user
+          await prisma.user.delete({
+            where: {
+              id: user.id,
+            },
+          });
         }
 
         if (!googleUser) {
@@ -107,7 +116,7 @@ passport.use(
           },
         });
 
-        //Normal user found
+        //Local user found
         if (user) {
           return done(null, user);
         }
