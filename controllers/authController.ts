@@ -106,7 +106,6 @@ export const refreshToken = [
     const { refresh_token: token } = req.cookies;
 
     //Check if the token is valid and not revoked
-
     const storedToken = await prisma.refreshTokens.findUnique({
       where: {
         token: token,
@@ -136,57 +135,35 @@ export const refreshToken = [
         return;
       }
 
-      if (OAuth) {
-        //This token is for OAuth users
-        if (storedToken.githubUserId) {
-          const githubUser = await prisma.githubUser.findUnique({
-            where: {
-              id: userId,
-            },
-          });
-
-          if (!githubUser) {
-            next(notFoundError('User not found'));
-            return;
-          }
-
-          req.user = githubUser;
-          next();
-          return;
-        }
-
-        if (storedToken.googleUserId) {
-          const googleUser = await prisma.googleUser.findUnique({
-            where: {
-              id: userId,
-            },
-          });
-
-          if (!googleUser) {
-            next(notFoundError('User not found'));
-            return;
-          }
-
-          req.user = googleUser;
-          next(googleUser);
-          return;
-        }
-      } else {
-        const localUser = await prisma.user.findUnique({
+      const [localUser, googleUser, githubUser] = await Promise.all([
+        prisma.user.findUnique({
           where: {
             id: userId,
           },
-        });
+        }),
+        prisma.googleUser.findUnique({
+          where: {
+            id: userId,
+          },
+        }),
+        prisma.githubUser.findUnique({
+          where: {
+            id: userId,
+          },
+        }),
+      ]);
 
-        if (!localUser) {
-          next(notFoundError('User not found'));
-          return;
-        }
+      const user = localUser || googleUser || githubUser;
 
-        req.user = localUser;
-        next();
+      if (!user) {
+        next(notFoundError('User not found'));
         return;
       }
+
+      req.user = user;
+      next();
+
+      return;
     } catch (e) {
       next(unautherizedError('Invalid token'));
     }
