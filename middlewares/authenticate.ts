@@ -5,7 +5,6 @@ import JWT from 'jsonwebtoken';
 import unautherizedError from '../errors/errorTypes/unautherizedError';
 import tokenExpired from '../utils/tokenExpired';
 import { prisma } from '../db/client';
-import { User } from '../types/user';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import asyncHandler from 'express-async-handler';
 
@@ -46,31 +45,32 @@ export default asyncHandler(async function (
       return;
     }
 
-    const googleUser = await prisma.googleUser.findUnique({
-      where: {
-        id: userId,
-      },
-    });
+    const [localUser, googleUser, githubUser] = await Promise.all([
+      prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+      }),
+      prisma.googleUser.findUnique({
+        where: {
+          id: userId,
+        },
+      }),
+      prisma.githubUser.findUnique({
+        where: {
+          id: userId,
+        },
+      }),
+    ]);
 
-    const githubUser = await prisma.githubUser.findUnique({
-      where: {
-        id: userId,
-      },
-    });
+    const user = localUser || googleUser || githubUser;
 
-    const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
-
-    if (!user && !githubUser && !googleUser) {
+    if (!user) {
       next(notFoundError('User not found'));
       return;
     }
 
-    req.user = (user || githubUser || googleUser) as User;
-
+    req.user = user;
     next();
   } catch (e) {
     next(unautherizedError('Invalid token'));

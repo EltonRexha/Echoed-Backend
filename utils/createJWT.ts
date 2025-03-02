@@ -2,6 +2,7 @@ import JWT from 'jsonwebtoken';
 import ms from 'ms';
 
 export default function (
+  //Id -> userId, OAuth -> Authentiacted with OAuth, access -> its a access token
   user: { id: string; OAuth?: boolean; access?: boolean },
   expiresIn: number,
   unit: 'm' | 'h' | 'd' = 'm'
