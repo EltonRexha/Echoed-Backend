@@ -7,8 +7,12 @@ export default async function (user: User): Promise<string> {
   const token = createJWT(user, 7, 'd');
 
   if (user.UserType === UserType.local) {
-    await prisma.refreshTokens.create({
-      data: {
+    await prisma.refreshTokens.upsert({
+      where: {
+        token,
+      },
+      update: {},
+      create: {
         token,
         revoked: false,
       },
@@ -16,8 +20,12 @@ export default async function (user: User): Promise<string> {
   }
 
   if (user.UserType === UserType.github) {
-    await prisma.refreshTokens.create({
-      data: {
+    await prisma.refreshTokens.upsert({
+      where: {
+        token,
+      },
+      update: {},
+      create: {
         token,
         revoked: false,
         GithubUser: {
@@ -30,8 +38,12 @@ export default async function (user: User): Promise<string> {
   }
 
   if (user.UserType === UserType.google) {
-    await prisma.refreshTokens.create({
-      data: {
+    await prisma.refreshTokens.upsert({
+      where: {
+        token,
+      },
+      update: {},
+      create: {
         token,
         revoked: false,
         GoogleUser: {

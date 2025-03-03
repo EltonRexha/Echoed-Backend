@@ -196,3 +196,19 @@ export const sendRedirectFront = asyncHandler(
     res.redirect(link.toString());
   }
 );
+
+export const logout = (req: Request, res: Response) => {
+  res.clearCookie('access_token', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+  });
+  res.clearCookie('refresh_token', {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    path: '/api/v1/auth/refresh',
+  });
+
+  res.status(200).json({ message: 'Logged out successfully' });
+};
