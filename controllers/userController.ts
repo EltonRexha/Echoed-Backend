@@ -19,7 +19,7 @@ const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
 export const getUsers = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const params = getUserSchema.parse(req.params);
+      const params = getUserSchema.parse(req.query);
       const username = params.username;
       const email = params.email;
       const id = params.id;
