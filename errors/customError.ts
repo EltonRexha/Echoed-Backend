@@ -2,6 +2,7 @@ interface JsonError {
   error: {
     message: string;
     messageCode?: string;
+    details?: Record<string, any>;
   };
 }
 

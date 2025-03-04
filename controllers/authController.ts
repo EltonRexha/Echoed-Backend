@@ -74,7 +74,11 @@ export const login = [
       }
 
       if (!user.verified) {
-        next(forbiddenError('Please verify your email', 'EMAIL_NOT_VERIFIED'));
+        next(
+          forbiddenError('Please verify your email', 'EMAIL_NOT_VERIFIED', {
+            email: user.email,
+          })
+        );
         return;
       }
 
