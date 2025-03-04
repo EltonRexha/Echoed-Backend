@@ -24,7 +24,9 @@ passport.use(
           profile.photos && profile.photos[0].value;
 
         if (!email || !firstName) {
-          done('data not provided from google');
+          done(
+            new Error('your google profile does not provide enough information')
+          );
           return;
         }
 
@@ -97,8 +99,10 @@ passport.use(
         const photo: undefined | string =
           profile.photos && profile.photos[0].value;
 
-        if (!firstName || !lastName) {
-          done('not enough data provided from github');
+        if (!firstName && !lastName) {
+          done(
+            new Error('your github profile does not provide enough information')
+          );
           return;
         }
 
