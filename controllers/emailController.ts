@@ -137,7 +137,7 @@ export const verifyEmail = asyncHandler(
     }
 
     if (user.verified) {
-      next(conflictError('Email already verified'));
+      next(conflictError('Email already verified', 'EMAIL_VERIFIED'));
       return;
     }
 

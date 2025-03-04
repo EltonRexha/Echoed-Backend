@@ -1,7 +1,13 @@
 import CustomError from '../customError';
 
-export default function (): CustomError {
+export default function (
+  message?: string,
+  messageCode?: string
+): CustomError {
   return new CustomError(500, {
-    error: 'Internal server error',
+    error: {
+      message: message || 'Internal server error',
+      messageCode,
+    },
   });
 }
