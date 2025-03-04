@@ -1,12 +1,12 @@
 interface JsonError {
-  error: any;
+  error: {
+    message: string;
+    messageCode?: string;
+  };
 }
 
 export default class CustomError extends Error {
-  constructor(
-    public code: number,
-    public jsonError: JsonError
-  ) {
+  constructor(public code: number, public jsonError: JsonError) {
     super(JSON.stringify(jsonError));
   }
 }

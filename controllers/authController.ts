@@ -18,7 +18,6 @@ import asyncHandler from 'express-async-handler';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const FRONTEND_URL = process.env.FRONT_URL as string;
-const TOKENS_ENDPOINT = process.env.SEND_TOKENS_ENDPOINT as string;
 
 export const sendTokens = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user as User;
@@ -75,7 +74,7 @@ export const login = [
       }
 
       if (!user.verified) {
-        next(forbiddenError('Please verify your email'));
+        next(forbiddenError('Please verify your email', 'EMAIL_NOT_VERIFIED'));
         return;
       }
 
@@ -178,7 +177,7 @@ export const sendRedirectFront = asyncHandler(
     const accessToken = createAccessToken(user);
     const refreshToken = await createRefreshToken(user);
 
-    const link = new URL(TOKENS_ENDPOINT, FRONTEND_URL);
+    const link = new URL(FRONTEND_URL);
 
     res.cookie('access_token', accessToken, {
       httpOnly: true,

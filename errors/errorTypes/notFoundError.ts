@@ -1,7 +1,13 @@
 import CustomError from '../customError';
 
-export default function (message: string = 'Not Found'): CustomError {
-  return new CustomError(404, {
-    error: message,
+export default function (
+  message?: string,
+  messageCode?: string
+): CustomError {
+  return new CustomError(500, {
+    error: {
+      message: message || 'Not found',
+      messageCode,
+    },
   });
 }
