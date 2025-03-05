@@ -5,7 +5,6 @@ import {
   Profile as GitHubProfile,
 } from 'passport-github2';
 import { prisma } from '../db/client';
-import { Gender } from '@prisma/client';
 
 passport.use(
   new GoogleStrategy(
@@ -23,7 +22,7 @@ passport.use(
         const photo: undefined | string =
           profile.photos && profile.photos[0].value;
 
-        if (!email || !firstName) {
+        if (!email) {
           done(
             new Error('your google profile does not provide enough information')
           );
@@ -94,17 +93,10 @@ passport.use(
       done: (error: any, user?: Express.User | false) => void
     ) => {
       try {
-        const firstName = profile.name?.givenName || 'githubUser';
-        const lastName = profile.name?.familyName || 'githubUser';
+        const firstName = profile.name?.givenName;
+        const lastName = profile.name?.familyName;
         const photo: undefined | string =
           profile.photos && profile.photos[0].value;
-
-        if (!firstName && !lastName) {
-          done(
-            new Error('your github profile does not provide enough information')
-          );
-          return;
-        }
 
         const user = await prisma.user.findFirst({
           where: {

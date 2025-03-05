@@ -46,7 +46,7 @@ model GoogleUser {
   id           String   @unique @default(uuid())
   googleUserId String
   email        String   @unique
-  firstName    String   @map("first_name")
+  firstName    String?  @map("first_name")
   lastName     String?  @map("last_name")
   OAuth        Boolean  @default(true)
   UserType     UserType @default(google)
@@ -65,8 +65,8 @@ model GoogleUser {
 model GithubUser {
   id           String   @unique @default(uuid())
   githubUserId String
-  firstName    String   @map("first_name")
-  lastName     String   @map("last_name")
+  firstName    String?  @map("first_name")
+  lastName     String?  @map("last_name")
   OAuth        Boolean  @default(true)
   UserType     UserType @default(github)
   profileUrl   String?
