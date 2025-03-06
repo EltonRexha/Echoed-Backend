@@ -1,6 +1,6 @@
 import { ZodIssue } from 'zod';
-import CustomError from '../customError';
+import ZodError from '../zodError';
 
-export default function (errors: ZodIssue[]): CustomError {
-  return new CustomError(400, { error: { message: JSON.stringify(errors) } });
+export default function (errors: ZodIssue[]): ZodError {
+  return new ZodError(400, { error: errors });
 }

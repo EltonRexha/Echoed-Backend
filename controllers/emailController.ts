@@ -9,9 +9,17 @@ import goneError from '../errors/errorTypes/goneError';
 import conflictError from '../errors/errorTypes/conflictError';
 import { userVerificationToken } from '@prisma/client';
 import asyncHandler from 'express-async-handler';
+import emailSchema from '../validations/emailSchema';
+import { zodError } from '../errors/errors';
+import { z } from 'zod';
+import sendResetPasswordEmail from '../utils/sendResetPasswordMail';
 
 const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
   process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
+);
+
+const RESET_PASSWORD_TOKEN_DURATION_MINUTES = parseInt(
+  process.env.RESET_PASSWORD_TOKEN_DURATION_MINUTES as string
 );
 
 export const sendVerificationEmail = asyncHandler(
@@ -89,7 +97,7 @@ export const sendVerificationEmail = asyncHandler(
 
     sendVerifyEmail(user.email, verificationToken, user);
     res.status(200).json({
-      message: 'successfully send email',
+      message: 'successfully send veify user email',
     });
   }
 );
@@ -107,6 +115,9 @@ export const verifyEmail = asyncHandler(
       where: {
         token: token,
       },
+      include: {
+        user: true,
+      },
     });
 
     if (!verificationToken) {
@@ -121,15 +132,7 @@ export const verifyEmail = asyncHandler(
       return;
     }
 
-    const user = await prisma.user.findFirst({
-      where: {
-        userVerificationToken: {
-          some: {
-            token,
-          },
-        },
-      },
-    });
+    const user = verificationToken.user;
 
     if (!user) {
       next(notFoundError('Token not found'));
@@ -153,5 +156,98 @@ export const verifyEmail = asyncHandler(
     res.status(200).json({
       message: 'User successfully verified',
     });
+  }
+);
+
+export const sendResetPassword = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email } = emailSchema.parse(req.body);
+
+      const user = await prisma.user.findUnique({
+        where: {
+          email,
+        },
+      });
+
+      if (!user) {
+        next(notFoundError('User not found'));
+        return;
+      }
+
+      const now = new Date();
+
+      //Get a tokens from newest to oldest
+      const existingResetPasswordTokens =
+        await prisma.resetPasswordToken.findMany({
+          where: {
+            expiresAt: {
+              gt: now,
+            },
+            User: {
+              id: user.id,
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+
+      const newestStoredResetPasswordToken = existingResetPasswordTokens[0] as
+        | userVerificationToken
+        | undefined;
+
+      const RESET_PASSWORD_TIMEOUT = subMinutes(
+        new Date(),
+        parseInt(process.env.RESET_PASSWORD_RESEND_TOKEN_TIMEOUT as string)
+      );
+
+      // If a token was created some minutes ago and more
+      // than one tokens were created then don't send email to prevent spams
+      if (newestStoredResetPasswordToken) {
+        if (
+          isAfter(
+            newestStoredResetPasswordToken.createdAt,
+            RESET_PASSWORD_TIMEOUT
+          ) &&
+          existingResetPasswordTokens.length > 1
+        ) {
+          next(manyRequestsError());
+          return;
+        }
+      }
+
+      const resetPasswordToken = createJWT(
+        user,
+        RESET_PASSWORD_TOKEN_DURATION_MINUTES
+      );
+
+      await prisma.resetPasswordToken.create({
+        data: {
+          expiresAt: addMinutes(
+            new Date(),
+            RESET_PASSWORD_TOKEN_DURATION_MINUTES
+          ),
+          token: resetPasswordToken,
+          User: {
+            connect: {
+              id: user.id,
+            },
+          },
+        },
+      });
+
+      await sendResetPasswordEmail(email, resetPasswordToken);
+
+      res.status(200).json({
+        message: 'successfully send reset password email',
+      });
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        next(zodError(e.errors));
+        return;
+      }
+      next(e);
+    }
   }
 );
