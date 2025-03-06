@@ -15,6 +15,9 @@ import notFoundError from '../errors/errorTypes/notFoundError';
 import JWT from 'jsonwebtoken';
 import tokenExpired from '../utils/tokenExpired';
 import asyncHandler from 'express-async-handler';
+import resetPasswordSchema from '../validations/resetPasswordSchema';
+import { isAfter } from 'date-fns';
+import goneError from '../errors/errorTypes/goneError';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const FRONTEND_URL = process.env.FRONT_URL as string;
@@ -220,3 +223,62 @@ export const logout = (req: Request, res: Response) => {
 
   res.status(200).json({ message: 'Logged out successfully' });
 };
+
+export const resetPassword = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { reset_password_token: resetPasswordToken, password } =
+        resetPasswordSchema.parse(req.body);
+
+      const storedResetPasswordToken =
+        await prisma.resetPasswordToken.findUnique({
+          where: {
+            token: resetPasswordToken,
+          },
+          include: {
+            User: true,
+          },
+        });
+
+      if (!storedResetPasswordToken) {
+        next(notFoundError('Reset password token not found'));
+        return;
+      }
+
+      const now = new Date();
+
+      if (isAfter(now, storedResetPasswordToken.expiresAt)) {
+        next(goneError('Token expired'));
+        return;
+      }
+
+      const user = storedResetPasswordToken.User;
+
+      if (!user) {
+        next(notFoundError('User not found'));
+        return;
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      await prisma.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          password: hashedPassword,
+        },
+      });
+
+      res.status(200).json({
+        message: 'successfully reset password',
+      });
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        next(zodError(e.errors));
+        return;
+      }
+      next(e);
+    }
+  }
+);

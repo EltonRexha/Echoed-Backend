@@ -115,6 +115,9 @@ export const verifyEmail = asyncHandler(
       where: {
         token: token,
       },
+      include: {
+        user: true,
+      },
     });
 
     if (!verificationToken) {
@@ -129,15 +132,7 @@ export const verifyEmail = asyncHandler(
       return;
     }
 
-    const user = await prisma.user.findFirst({
-      where: {
-        userVerificationToken: {
-          some: {
-            token,
-          },
-        },
-      },
-    });
+    const user = verificationToken.user;
 
     if (!user) {
       next(notFoundError('Token not found'));
