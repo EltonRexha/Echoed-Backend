@@ -5,7 +5,7 @@ import cors from 'cors';
 import CustomError from './errors/customError';
 import { internalError } from './errors/errors';
 import cookieParser from 'cookie-parser';
-import ZodError from './errors/zodError';
+import ZodError from './errors/ZodError';
 dotenv.config();
 
 const app = express();
