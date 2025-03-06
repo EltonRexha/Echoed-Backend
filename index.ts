@@ -5,6 +5,7 @@ import cors from 'cors';
 import CustomError from './errors/customError';
 import { internalError } from './errors/errors';
 import cookieParser from 'cookie-parser';
+import ZodError from './errors/zodError';
 dotenv.config();
 
 const app = express();
@@ -22,7 +23,7 @@ app.use('/api/v1', apiRouter);
 const PORT = process.env.PORT || 3000;
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  if (err instanceof CustomError) {
+  if (err instanceof CustomError || err instanceof ZodError) {
     res.status(err.code).json(err.jsonError);
     return;
   }

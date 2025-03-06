@@ -4,7 +4,7 @@ import { User } from '../types/user';
 import createJWT from './createJWT';
 
 export default async function (user: User): Promise<string> {
-  const token = createJWT(user, 7, 'd');
+  const token = createJWT({ ...user, refresh: true }, 7, 'd');
 
   if (user.UserType === UserType.local) {
     await prisma.refreshTokens.upsert({

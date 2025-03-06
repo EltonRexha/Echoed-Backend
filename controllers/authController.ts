@@ -129,8 +129,13 @@ export const refreshToken = [
       const parsedToken = JWT.verify(token, JWT_SECRET);
       const {
         exp,
-        user: { id: userId, OAuth },
+        user: { id: userId, refresh },
       } = authenticationTokenSchema.parse(parsedToken);
+
+      if (!refresh) {
+        next(unautherizedError('Invalid token'));
+        return;
+      }
 
       //If token expired
       if (tokenExpired(exp)) {

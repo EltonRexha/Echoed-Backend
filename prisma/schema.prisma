@@ -36,6 +36,7 @@ model User {
   googleUser            GoogleUser?
   githubUser            GithubUser?
   UserType              UserType                @default(local)
+  resetPasswordToken    resetPasswordToken[]
 
   @@index([email])
   @@index([username])
@@ -199,6 +200,8 @@ model refreshTokens {
 model resetPasswordToken {
   id        String   @id @default(uuid())
   token     String   @unique
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   expiresAt DateTime

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { createUser } from '../controllers/userController';
 import {
+  sendResetPassword,
   sendVerificationEmail,
   verifyEmail,
 } from '../controllers/emailController';
@@ -17,6 +18,7 @@ router.post('/user/email/verify', verifyEmail);
 router.post('/login', login);
 router.post('/refresh', refreshToken);
 router.post('/logout', logout);
+router.post('/user/email/send-reset-password', sendResetPassword);
 router.get('/protected', authenticate, (req, res) => {
   console.log(req.user);
   res.status(200).json({

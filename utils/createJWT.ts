@@ -3,7 +3,7 @@ import ms from 'ms';
 
 export default function (
   //Id -> userId, OAuth -> Authentiacted with OAuth, access -> its a access token
-  user: { id: string; OAuth?: boolean; access?: boolean },
+  user: { id: string; OAuth?: boolean; access?: boolean; refresh?: boolean },
   expiresIn: number,
   unit: 'm' | 'h' | 'd' = 'm'
 ): string {
@@ -15,6 +15,7 @@ export default function (
         id: user.id,
         OAuth: !!user.OAuth,
         access: !!user.access,
+        refresh: !!user.refresh,
       },
     },
     process.env.JWT_SECRET as string,
