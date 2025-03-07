@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { createUser } from '../controllers/userController';
 import {
   sendResetPassword,
   sendVerificationEmail,
@@ -8,11 +7,10 @@ import {
 import '../config/passport';
 import OAuthRouter from './oAuth';
 import { login, logout, refreshToken, resetPassword } from '../controllers/authController';
-import authenticate from '../middlewares/authenticate';
+import authenticate from '../middlewares/authenticated';
 
 const router = Router();
 
-router.post('/user', createUser);
 router.post('/user/email/verification', sendVerificationEmail);
 router.post('/user/email/verify', verifyEmail);
 router.post('/login', login);

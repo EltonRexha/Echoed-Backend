@@ -18,7 +18,8 @@ model User {
   userStatus            UserStatus              @default(active) @map("user_status")
   followers             User[]                  @relation(name: "follow")
   following             User[]                  @relation(name: "follow")
-  UserInfo              UserInfo?
+  UserInfo              UserInfo                @relation(fields: [userInfoId], references: [id])
+  userInfoId            String                  @unique @map("userId")
   posts                 Post[]
   likedPosts            Post[]                  @relation(name: "likes")
   savedPosts            Post[]                  @relation(name: "saved")
@@ -87,8 +88,7 @@ model UserInfo {
   country     String
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-  User        User     @relation(fields: [userId], references: [id])
-  userId      String   @unique
+  User        User?
 
   @@map("userInformation")
 }

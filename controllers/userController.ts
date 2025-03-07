@@ -3,7 +3,7 @@ import { prisma } from '../db/client';
 import userSchema from '../validations/userSchema';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { zodError } from '../errors/errors';
+import { internalError, zodError } from '../errors/errors';
 import sendVerifyEmail from '../utils/sendVerifyMail';
 import createJWT from '../utils/createJWT';
 import { addMinutes } from 'date-fns';
@@ -11,6 +11,7 @@ import getUserSchema from '../validations/getUserSchema';
 import findUser from '../utils/findUser';
 import badRequestError from '../errors/errorTypes/badRequestError';
 import asyncHandler from 'express-async-handler';
+import { isGithubUser, isGoogleUser, isLocalUser, User } from '../types/user';
 
 const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
   process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
@@ -39,6 +40,7 @@ export const getUsers = asyncHandler(
             username: true,
             firstName: true,
             lastName: true,
+            ProfileImage: true,
           },
           skip,
           take: limit,
@@ -140,5 +142,56 @@ export const createUser = asyncHandler(
       }
       next(e);
     }
+  }
+);
+
+export const getCurrentUser = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user as User;
+
+    if (isLocalUser(user)) {
+      const info = await prisma.user.findUnique({
+        where: {
+          id: user.id,
+        },
+        select: {
+          ProfileImage: true,
+          UserInfo: true,
+        },
+      });
+
+      if (!info) {
+        next(internalError('Could not fetch your profile'));
+        return;
+      }
+
+      res.status(200).json({
+        user: {
+          email: user.email,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImage: info.ProfileImage?.path,
+          gender: info.UserInfo.gender,
+          country: info.UserInfo.country,
+          dateOfBirth: info.UserInfo.dateOfBirth,
+          verified: user.verified,
+        },
+      });
+
+      return;
+    }
+
+    if (isGithubUser(user)) {
+      res.status(200).json({ ...user, ...{ profileImage: user.profileUrl } });
+      return;
+    }
+
+    if (isGoogleUser(user)) {
+      res.status(200).json({ ...user, ...{ profileImage: user.profileUrl } });
+      return;
+    }
+
+    next(internalError('Invalid user type'));
   }
 );

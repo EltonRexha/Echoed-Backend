@@ -1,27 +1,19 @@
 import { prisma } from '../db/client';
-import { User } from '../types/user';
 
 /**
  * It returns a promise where the first item is a local user
- * and the second item is a google user 
+ * and the second item is a google user
  */
-export default async function (
-  username?: string,
-  email?: string,
-  id?: string
-) {
+export default async function (username?: string, email?: string, id?: string) {
   return await Promise.all([
-    prisma.user.findUnique({
+    prisma.user.findFirst({
       where: {
-        username,
-        email,
-        id,
+        OR: [{ username }, { email }, { id }],
       },
     }),
-    prisma.googleUser.findUnique({
+    prisma.googleUser.findFirst({
       where: {
-        email,
-        id,
+        OR: [{ email }, { id }],
       },
     }),
   ]);

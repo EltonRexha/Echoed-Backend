@@ -7,6 +7,7 @@ import tokenExpired from '../utils/tokenExpired';
 import { prisma } from '../db/client';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import asyncHandler from 'express-async-handler';
+import { isLocalUser } from '../types/user';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -67,6 +68,11 @@ export default asyncHandler(async function (
 
     if (!user) {
       next(notFoundError('User not found'));
+      return;
+    }
+
+    if (isLocalUser(user) && !user.verified) {
+      next(unautherizedError('User not verified'));
       return;
     }
 
