@@ -101,7 +101,7 @@ passport.use(
         const user = await prisma.user.findFirst({
           where: {
             githubUser: {
-              userId: profile.id,
+              githubUserId: profile.id,
             },
           },
         });
