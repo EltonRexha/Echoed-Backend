@@ -183,12 +183,16 @@ export const getCurrentUser = asyncHandler(
     }
 
     if (isGithubUser(user)) {
-      res.status(200).json({ ...user, ...{ profileImage: user.profileUrl } });
+      res
+        .status(200)
+        .json({ user: { ...user, ...{ profileImage: user.profileUrl } } });
       return;
     }
 
     if (isGoogleUser(user)) {
-      res.status(200).json({ ...user, ...{ profileImage: user.profileUrl } });
+      res
+        .status(200)
+        .json({ user: { ...user, ...{ profileImage: user.profileUrl } } });
       return;
     }
 
