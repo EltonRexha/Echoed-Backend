@@ -1,5 +1,4 @@
 import { NextFunction, Request, Response } from 'express';
-import badRequestError from '../errors/errorTypes/badRequestError';
 import authenticationTokenSchema from '../validations/authenticationTokenSchema';
 import JWT from 'jsonwebtoken';
 import unautherizedError from '../errors/errorTypes/unautherizedError';
@@ -21,7 +20,7 @@ export default asyncHandler(async function (
     !('access_token' in req.cookies) ||
     typeof req.cookies.access_token !== 'string'
   ) {
-    next(badRequestError('Access token not provided'));
+    next(unautherizedError('Access token not provided'));
     return;
   }
 
