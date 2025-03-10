@@ -37,7 +37,7 @@ export const sendVerificationEmail = asyncHandler(
         },
       });
 
-      if (!user || user.verified) {
+      if (!user || user.verified || !user.email) {
         next(notFoundError('User not found'));
         return;
       }
@@ -184,7 +184,7 @@ export const sendResetPassword = asyncHandler(
         },
       });
 
-      if (!user) {
+      if (!user || !user.email) {
         next(notFoundError('User not found'));
         return;
       }

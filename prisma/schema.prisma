@@ -10,7 +10,7 @@ datasource db {
 model User {
   id                    String                  @id @default(uuid())
   username              String                  @unique
-  email                 String                  @unique
+  email                 String?                 @unique
   firstName             String                  @map("first_name")
   lastName              String                  @map("last_name")
   verified              Boolean
@@ -21,14 +21,14 @@ model User {
   UserInfo              UserInfo                @relation(fields: [userInfoId], references: [id])
   userInfoId            String                  @unique @map("userId")
   posts                 Post[]
-  likedPosts            Post[]                  @relation(name: "likes")
+  lis                   Group[]                 @relation(name: "members")
+  MessakedPosts         Post[]                  @relation(name: "likes")
   savedPosts            Post[]                  @relation(name: "saved")
   createdAt             DateTime                @default(now()) @map("created_at")
   updatedAt             DateTime                @updatedAt @map("updated_at")
   postsId               String?
   createdGroups         Group[]                 @relation(name: "creator")
-  groups                Group[]                 @relation(name: "members")
-  Messages              Message[]
+  groupges              Message[]
   refreshTokens         refreshTokens[]
   userVerificationToken userVerificationToken[]
   userPreferedTag       userPreferedTag[]
@@ -46,7 +46,7 @@ model User {
 
 model GoogleUser {
   id           String   @unique @default(uuid())
-  googleUserId String
+  googleUserId String   @unique
   email        String   @unique
   firstName    String?  @map("first_name")
   lastName     String?  @map("last_name")
@@ -55,7 +55,7 @@ model GoogleUser {
 
   profileUrl String?
 
-  user          User?           @relation(fields: [userId], references: [id])
+  user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        String?         @unique
   refreshTokens refreshTokens[]
 
@@ -66,14 +66,14 @@ model GoogleUser {
 
 model GithubUser {
   id           String   @unique @default(uuid())
-  githubUserId String
+  githubUserId String   @unique
   firstName    String?  @map("first_name")
   lastName     String?  @map("last_name")
   OAuth        Boolean  @default(true)
   UserType     UserType @default(github)
   profileUrl   String?
 
-  user          User?           @relation(fields: [userId], references: [id])
+  user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        String?         @unique
   refreshTokens refreshTokens[]
 
