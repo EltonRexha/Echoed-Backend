@@ -189,7 +189,7 @@ export const sendRedirectFront = asyncHandler(
     const accessToken = createAccessToken(user);
     const refreshToken = await createRefreshToken(user);
 
-    const link = new URL(FRONTEND_URL);
+    const link = new URL('/home', FRONTEND_URL);
 
     res.cookie('access_token', accessToken, {
       httpOnly: true,

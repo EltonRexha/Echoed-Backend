@@ -12,6 +12,8 @@ import findUser from '../utils/findUser';
 import badRequestError from '../errors/errorTypes/badRequestError';
 import asyncHandler from 'express-async-handler';
 import { isGithubUser, isGoogleUser, isLocalUser, User } from '../types/user';
+import finishProfileSchema from '../validations/finishProfileSchema';
+import notFoundError from '../errors/errorTypes/notFoundError';
 
 const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
   process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
@@ -176,6 +178,7 @@ export const getCurrentUser = asyncHandler(
           country: info.UserInfo.country,
           dateOfBirth: info.UserInfo.dateOfBirth,
           verified: user.verified,
+          UserType: user.UserType
         },
       });
 
@@ -197,5 +200,126 @@ export const getCurrentUser = asyncHandler(
     }
 
     next(internalError('Invalid user type'));
+  }
+);
+
+export const convertOAuthUserToLocalUser = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { firstName, lastName, username, country, dateOfBirth } =
+        finishProfileSchema.parse({
+          ...req.body,
+          dateOfBirth: new Date(req.body.dateOfBirth),
+        });
+
+      const user = req.user as User;
+
+      if (isLocalUser(user)) {
+        next(badRequestError('Cannot convert a local user to a local user'));
+        return;
+      }
+
+      if (isGithubUser(user)) {
+        //Migrate github user to local user
+        const githubUser = await prisma.githubUser.findUnique({
+          where: {
+            githubUserId: user.githubUserId,
+          },
+          include: {
+            user: true,
+          },
+        });
+
+        if (!githubUser) {
+          next(notFoundError('github user not found'));
+          return;
+        }
+
+        if (githubUser.user) {
+          next(badRequestError('github user already has a local user'));
+          return;
+        }
+
+        const localUser = await prisma.user.create({
+          data: {
+            firstName: githubUser.firstName || firstName,
+            lastName: githubUser.lastName || lastName,
+            username: username,
+            UserInfo: {
+              create: {
+                country,
+                dateOfBirth,
+                gender: 'unkown',
+              },
+            },
+            githubUser: {
+              connect: {
+                githubUserId: user.githubUserId,
+              },
+            },
+            verified: true,
+          },
+        });
+        req.user = localUser;
+        next();
+        return;
+      }
+
+      if (isGoogleUser(user)) {
+        //Migrate google user to local user
+        const googleUser = await prisma.googleUser.findUnique({
+          where: {
+            googleUserId: user.googleUserId,
+          },
+          include: {
+            user: true,
+          },
+        });
+
+        if (!googleUser) {
+          next(notFoundError('google user not found'));
+          return;
+        }
+
+        if (googleUser.user) {
+          next(badRequestError('google user already has a local user'));
+          return;
+        }
+
+        const localUser = await prisma.user.create({
+          data: {
+            firstName: googleUser.firstName || firstName,
+            lastName: googleUser.lastName || lastName,
+            email: googleUser.email,
+            username: username,
+            UserInfo: {
+              create: {
+                country,
+                dateOfBirth,
+                gender: 'unkown',
+              },
+            },
+            googleUser: {
+              connect: {
+                googleUserId: user.googleUserId
+              }
+            },
+            verified: true,
+          },
+        });
+        req.user = localUser;
+        next();
+        return;
+      }
+
+      next(internalError());
+      return;
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        next(zodError(e.errors));
+        return;
+      }
+      next(e);
+    }
   }
 );
