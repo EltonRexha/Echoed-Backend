@@ -33,8 +33,14 @@ export const getUsers = asyncHandler(
       const [users, totalUsers] = await Promise.all([
         prisma.user.findMany({
           where: {
-            username: username,
-            email: email,
+            username: {
+              equals: username,
+              mode: 'insensitive',
+            },
+            email: {
+              equals: email,
+              mode: 'insensitive',
+            },
             id: id,
           },
           select: {
@@ -100,11 +106,11 @@ export const createUser = asyncHandler(
 
       const createdUser = await prisma.user.create({
         data: {
-          email,
+          email: email.toLowerCase(),
           firstName,
           lastName,
           password: passwordHash,
-          username: username,
+          username: username.toLowerCase(),
           verified: false,
           UserInfo: {
             create: {
@@ -178,7 +184,7 @@ export const getCurrentUser = asyncHandler(
           country: info.UserInfo.country,
           dateOfBirth: info.UserInfo.dateOfBirth,
           verified: user.verified,
-          UserType: user.UserType
+          UserType: user.UserType,
         },
       });
 
@@ -244,7 +250,7 @@ export const convertOAuthUserToLocalUser = asyncHandler(
           data: {
             firstName: githubUser.firstName || firstName,
             lastName: githubUser.lastName || lastName,
-            username: username,
+            username: username.toLowerCase(),
             UserInfo: {
               create: {
                 country,
@@ -290,8 +296,8 @@ export const convertOAuthUserToLocalUser = asyncHandler(
           data: {
             firstName: googleUser.firstName || firstName,
             lastName: googleUser.lastName || lastName,
-            email: googleUser.email,
-            username: username,
+            email: googleUser.email.toLowerCase(),
+            username: username.toLowerCase(),
             UserInfo: {
               create: {
                 country,
@@ -301,8 +307,8 @@ export const convertOAuthUserToLocalUser = asyncHandler(
             },
             googleUser: {
               connect: {
-                googleUserId: user.googleUserId
-              }
+                googleUserId: user.googleUserId,
+              },
             },
             verified: true,
           },

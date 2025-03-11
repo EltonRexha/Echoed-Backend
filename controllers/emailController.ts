@@ -31,8 +31,8 @@ export const sendVerificationEmail = asyncHandler(
 
       const user = await prisma.user.findUnique({
         where: {
-          email,
-          username,
+          email: email?.toLowerCase(),
+          username: username?.toLowerCase(),
           id,
         },
       });
@@ -178,8 +178,8 @@ export const sendResetPassword = asyncHandler(
 
       const user = await prisma.user.findUnique({
         where: {
-          email,
-          username,
+          email: email?.toLowerCase(),
+          username: username?.toLowerCase(),
           id,
         },
       });

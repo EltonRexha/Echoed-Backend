@@ -8,12 +8,12 @@ export default async function (username?: string, email?: string, id?: string) {
   return await Promise.all([
     prisma.user.findFirst({
       where: {
-        OR: [{ username }, { email }, { id }],
+        OR: [{ username: username?.toLowerCase() }, { email: email?.toLowerCase() }, { id }],
       },
     }),
     prisma.googleUser.findFirst({
       where: {
-        OR: [{ email }, { id }],
+        OR: [{ email: email?.toLowerCase() }, { id }],
       },
     }),
   ]);

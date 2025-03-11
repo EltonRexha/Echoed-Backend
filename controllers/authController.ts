@@ -54,8 +54,8 @@ export const login = [
       //User exists?
       const user = await prisma.user.findUnique({
         where: {
-          email,
-          username,
+          email: email?.toLowerCase(),
+          username: username?.toLowerCase(),
         },
       });
 
