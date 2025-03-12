@@ -5,6 +5,7 @@ import {
   Profile as GitHubProfile,
 } from 'passport-github2';
 import { prisma } from '../db/client';
+import { internalError } from '../errors/errors';
 
 passport.use(
   new GoogleStrategy(
@@ -73,7 +74,7 @@ passport.use(
 
         done(null, googleUser);
       } catch (e) {
-        done(e);
+        done(internalError());
       }
     }
   )
@@ -85,6 +86,7 @@ passport.use(
       clientID: process.env.GITHUB_OAUTH_CLIENT_ID as string,
       clientSecret: process.env.GITHUB_OAUTH_CLIENT_SECRET as string,
       callbackURL: '/api/v1/auth/github/redirect',
+      scope: ['user:email'],
     },
     async (
       accessToken: string,
@@ -97,6 +99,15 @@ passport.use(
         const lastName = profile.name?.familyName;
         const photo: undefined | string =
           profile.photos && profile.photos[0].value;
+
+        const email = profile.emails && profile.emails[0].value;
+
+        if (!email) {
+          done(
+            new Error('your github profile does not provide enough information')
+          );
+          return;
+        }
 
         const user = await prisma.user.findFirst({
           where: {
@@ -120,6 +131,7 @@ passport.use(
         if (!githubUser) {
           const user = await prisma.githubUser.create({
             data: {
+              email,
               firstName,
               lastName,
               githubUserId: profile.id,
@@ -133,7 +145,7 @@ passport.use(
 
         return done(null, githubUser);
       } catch (error) {
-        return done(error);
+        return done(internalError());
       }
     }
   )
