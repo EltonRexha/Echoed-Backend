@@ -109,6 +109,25 @@ passport.use(
           return;
         }
 
+        const sameEmailUser = await prisma.user.findUnique({
+          where: {
+            email: email,
+          },
+        });
+
+        if (sameEmailUser && !sameEmailUser.verified) {
+          await prisma.user.delete({
+            where: {
+              id: sameEmailUser.id,
+            },
+          });
+        }
+
+        if (sameEmailUser && sameEmailUser.verified) {
+          done(new Error('Please login with your email'));
+          return;
+        }
+
         const user = await prisma.user.findFirst({
           where: {
             githubUser: {
