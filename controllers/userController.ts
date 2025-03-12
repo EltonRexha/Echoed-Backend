@@ -250,6 +250,7 @@ export const convertOAuthUserToLocalUser = asyncHandler(
           data: {
             firstName: githubUser.firstName || firstName,
             lastName: githubUser.lastName || lastName,
+            email: githubUser.email,
             username: username.toLowerCase(),
             UserInfo: {
               create: {

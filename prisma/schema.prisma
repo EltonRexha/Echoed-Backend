@@ -10,7 +10,7 @@ datasource db {
 model User {
   id                    String                  @id @default(uuid())
   username              String                  @unique
-  email                 String?                 @unique
+  email                 String                  @unique
   firstName             String                  @map("first_name")
   lastName              String                  @map("last_name")
   verified              Boolean
@@ -65,13 +65,14 @@ model GoogleUser {
 }
 
 model GithubUser {
-  id           String   @unique @default(uuid())
-  githubUserId String   @unique
-  firstName    String?  @map("first_name")
-  lastName     String?  @map("last_name")
-  OAuth        Boolean  @default(true)
-  UserType     UserType @default(github)
-  profileUrl   String?
+  id           String @unique @default(uuid())
+  githubUserId String @unique
+  email        String @unique
+  firstName  String?  @map("first_name")
+  lastName   String?  @map("last_name")
+  OAuth      Boolean  @default(true)
+  UserType   UserType @default(github)
+  profileUrl String?
 
   user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        String?         @unique
