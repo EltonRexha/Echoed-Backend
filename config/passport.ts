@@ -5,7 +5,7 @@ import {
   Profile as GitHubProfile,
 } from 'passport-github2';
 import { prisma } from '../db/client';
-import { internalError } from '../errors/errors';
+import internalError from '../errors/errorTypes/internalError';
 
 passport.use(
   new GoogleStrategy(

@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import hbs from 'nodemailer-express-handlebars';
-const path = require('path');
+import path from 'path';
 
 const emailTransporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',

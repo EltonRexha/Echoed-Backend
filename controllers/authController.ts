@@ -5,7 +5,6 @@ import { User } from '../types/user';
 import loginSchema from '../validations/loginSchema';
 import authenticationTokenSchema from '../validations/authenticationTokenSchema';
 import { z } from 'zod';
-import { zodError } from '../errors/errors';
 import { prisma } from '../db/client';
 import bcrypt from 'bcryptjs';
 import unautherizedError from '../errors/errorTypes/unautherizedError';
@@ -48,52 +47,44 @@ export const sendTokens = asyncHandler(async (req: Request, res: Response) => {
 
 export const login = [
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { username, email, password } = loginSchema.parse(req.body);
+    const { username, email, password } = loginSchema.parse(req.body);
 
-      //User exists?
-      const user = await prisma.user.findUnique({
-        where: {
-          email: email?.toLowerCase(),
-          username: username?.toLowerCase(),
-        },
-      });
+    //User exists?
+    const user = await prisma.user.findUnique({
+      where: {
+        email: email?.toLowerCase(),
+        username: username?.toLowerCase(),
+      },
+    });
 
-      if (!user) {
-        next(unautherizedError('Invalid credentials'));
-        return;
-      }
-
-      if (!user.password) {
-        next(unautherizedError('Please login with your OAuth provider'));
-        return;
-      }
-
-      const passwordCorrect = await bcrypt.compare(password, user.password);
-
-      if (!passwordCorrect) {
-        next(unautherizedError('Invalid credentials'));
-        return;
-      }
-
-      if (!user.verified) {
-        next(
-          forbiddenError('Please verify your email', 'EMAIL_NOT_VERIFIED', {
-            email: user.email,
-          })
-        );
-        return;
-      }
-
-      req.user = user;
-      next();
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        next(zodError(e.errors));
-        return;
-      }
-      next(e);
+    if (!user) {
+      next(unautherizedError('Invalid credentials'));
+      return;
     }
+
+    if (!user.password) {
+      next(unautherizedError('Please login with your OAuth provider'));
+      return;
+    }
+
+    const passwordCorrect = await bcrypt.compare(password, user.password);
+
+    if (!passwordCorrect) {
+      next(unautherizedError('Invalid credentials'));
+      return;
+    }
+
+    if (!user.verified) {
+      next(
+        forbiddenError('Please verify your email', 'EMAIL_NOT_VERIFIED', {
+          email: user.email,
+        })
+      );
+      return;
+    }
+
+    req.user = user;
+    next();
   }),
   sendTokens,
 ];
@@ -226,59 +217,52 @@ export const logout = (req: Request, res: Response) => {
 
 export const resetPassword = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { reset_password_token: resetPasswordToken, password } =
-        resetPasswordSchema.parse(req.body);
+    const { reset_password_token: resetPasswordToken, password } =
+      resetPasswordSchema.parse(req.body);
 
-      const storedResetPasswordToken =
-        await prisma.resetPasswordToken.findUnique({
-          where: {
-            token: resetPasswordToken,
-          },
-          include: {
-            User: true,
-          },
-        });
-
-      if (!storedResetPasswordToken) {
-        next(notFoundError('Reset password token not found'));
-        return;
-      }
-
-      const now = new Date();
-
-      if (isAfter(now, storedResetPasswordToken.expiresAt)) {
-        next(goneError('Token expired'));
-        return;
-      }
-
-      const user = storedResetPasswordToken.User;
-
-      if (!user) {
-        next(notFoundError('User not found'));
-        return;
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      await prisma.user.update({
+    const storedResetPasswordToken = await prisma.resetPasswordToken.findUnique(
+      {
         where: {
-          id: user.id,
+          token: resetPasswordToken,
         },
-        data: {
-          password: hashedPassword,
+        include: {
+          User: true,
         },
-      });
-
-      res.status(200).json({
-        message: 'successfully reset password',
-      });
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        next(zodError(e.errors));
-        return;
       }
-      next(e);
+    );
+
+    if (!storedResetPasswordToken) {
+      next(notFoundError('Reset password token not found'));
+      return;
     }
+
+    const now = new Date();
+
+    if (isAfter(now, storedResetPasswordToken.expiresAt)) {
+      next(goneError('Token expired'));
+      return;
+    }
+
+    const user = storedResetPasswordToken.User;
+
+    if (!user) {
+      next(notFoundError('User not found'));
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    res.status(200).json({
+      message: 'successfully reset password',
+    });
   }
 );
