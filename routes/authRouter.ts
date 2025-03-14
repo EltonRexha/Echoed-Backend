@@ -5,7 +5,7 @@ import {
   verifyEmail,
 } from '../controllers/emailController';
 import '../config/passport';
-import OAuthRouter from './oAuth';
+import OAuthRouter from './oAuthRouter';
 import { login, logout, refreshToken, resetPassword } from '../controllers/authController';
 import authenticate from '../middlewares/authenticated';
 

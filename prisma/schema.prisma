@@ -65,14 +65,14 @@ model GoogleUser {
 }
 
 model GithubUser {
-  id           String @unique @default(uuid())
-  githubUserId String @unique
-  email        String @unique
-  firstName  String?  @map("first_name")
-  lastName   String?  @map("last_name")
-  OAuth      Boolean  @default(true)
-  UserType   UserType @default(github)
-  profileUrl String?
+  id           String   @unique @default(uuid())
+  githubUserId String   @unique
+  email        String   @unique
+  firstName    String?  @map("first_name")
+  lastName     String?  @map("last_name")
+  OAuth        Boolean  @default(true)
+  UserType     UserType @default(github)
+  profileUrl   String?
 
   user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        String?         @unique
@@ -96,7 +96,7 @@ model UserInfo {
 
 model Post {
   id           String        @id @default(uuid())
-  creator      User          @relation(fields: [userId], references: [id])
+  author       User          @relation(fields: [userId], references: [id])
   userId       String
   content      String        @db.Text
   Reposts      Post[]        @relation(name: "reposts")
@@ -104,8 +104,8 @@ model Post {
   mainPostId   String?
   likedBy      User[]        @relation(name: "likes")
   savedBy      User[]        @relation(name: "saved")
-  media        Media         @relation(fields: [mediaId], references: [id])
-  mediaId      String
+  media        Media?        @relation(fields: [mediaId], references: [id])
+  mediaId      String?
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   postComments postComment[]

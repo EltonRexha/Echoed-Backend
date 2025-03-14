@@ -3,7 +3,7 @@ import { prisma } from '../db/client';
 import userSchema from '../validations/userSchema';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { internalError, zodError } from '../errors/errors';
+import internalError from '../errors/errorTypes/internalError';
 import sendVerifyEmail from '../utils/sendVerifyMail';
 import createJWT from '../utils/createJWT';
 import { addMinutes } from 'date-fns';
@@ -21,135 +21,117 @@ const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
 
 export const getUsers = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const params = getUserSchema.parse(req.query);
-      const username = params.username;
-      const email = params.email;
-      const id = params.id;
-      const page = Number(params.page) || 1;
-      const limit = Number(params.limit) || 10;
-      const skip = (page - 1) * limit;
+    const params = getUserSchema.parse(req.query);
+    const username = params.username;
+    const email = params.email;
+    const id = params.id;
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 10;
+    const skip = (page - 1) * limit;
 
-      const [users, totalUsers] = await Promise.all([
-        prisma.user.findMany({
-          where: {
-            username: {
-              equals: username,
-              mode: 'insensitive',
-            },
-            email: {
-              equals: email,
-              mode: 'insensitive',
-            },
-            id: id,
+    const [users, totalUsers] = await Promise.all([
+      prisma.user.findMany({
+        where: {
+          username: {
+            equals: username,
+            mode: 'insensitive',
           },
-          select: {
-            email: true,
-            username: true,
-            firstName: true,
-            lastName: true,
-            ProfileImage: true,
+          email: {
+            equals: email,
+            mode: 'insensitive',
           },
-          skip,
-          take: limit,
-        }),
-        prisma.user.count(),
-      ]);
+          id: id,
+        },
+        select: {
+          email: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          ProfileImage: true,
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.user.count(),
+    ]);
 
-      res.json({
-        users,
-        page,
-        totalPages: Math.ceil(totalUsers / limit),
-      });
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        next(zodError(e.errors));
-        return;
-      }
-      next(e);
-    }
+    res.json({
+      users,
+      page,
+      totalPages: Math.ceil(totalUsers / limit),
+    });
   }
 );
 
 export const createUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const user = userSchema.parse({
-        ...req.body,
-        dateOfBirth: new Date(req.body.dateOfBirth),
-      });
+    const user = userSchema.parse({
+      ...req.body,
+      dateOfBirth: new Date(req.body.dateOfBirth),
+    });
 
-      const {
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      dateOfBirth,
+      username,
+      country,
+      gender,
+    } = user;
+
+    const foundUser = await findUser(username, email);
+    const [localUser, googleUser] = foundUser;
+
+    const userExists = !!(localUser || googleUser);
+
+    if (userExists) {
+      next(badRequestError('User with this email or username already exists'));
+      return;
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const createdUser = await prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
         firstName,
         lastName,
-        email,
-        password,
-        dateOfBirth,
-        username,
-        country,
-        gender,
-      } = user;
-
-      const foundUser = await findUser(username, email);
-      const [localUser, googleUser] = foundUser;
-
-      const userExists = !!(localUser || googleUser);
-
-      if (userExists) {
-        next(
-          badRequestError('User with this email or username already exists')
-        );
-        return;
-      }
-
-      const passwordHash = await bcrypt.hash(password, 10);
-
-      const createdUser = await prisma.user.create({
-        data: {
-          email: email.toLowerCase(),
-          firstName,
-          lastName,
-          password: passwordHash,
-          username: username.toLowerCase(),
-          verified: false,
-          UserInfo: {
-            create: {
-              country,
-              dateOfBirth,
-              gender,
-            },
+        password: passwordHash,
+        username: username.toLowerCase(),
+        verified: false,
+        UserInfo: {
+          create: {
+            country,
+            dateOfBirth,
+            gender,
           },
         },
-      });
+      },
+    });
 
-      const userVerificationToken = createJWT(
-        createdUser,
-        EMAIL_VERIFICATION_TOKEN_MINUTES
-      );
+    const userVerificationToken = createJWT(
+      createdUser,
+      EMAIL_VERIFICATION_TOKEN_MINUTES
+    );
 
-      await prisma.userVerificationToken.create({
-        data: {
-          expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
-          token: userVerificationToken,
-          user: {
-            connect: {
-              id: createdUser.id,
-            },
+    await prisma.userVerificationToken.create({
+      data: {
+        expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
+        token: userVerificationToken,
+        user: {
+          connect: {
+            id: createdUser.id,
           },
         },
-      });
+      },
+    });
 
-      await sendVerifyEmail(email, userVerificationToken, createdUser);
-      res.status(201).json({
-        message: 'User successfully created',
-      });
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        next(zodError(e.errors));
-        return;
-      }
-      next(e);
-    }
+    await sendVerifyEmail(email, userVerificationToken, createdUser);
+    res.status(201).json({
+      message: 'User successfully created',
+    });
   }
 );
 
@@ -211,122 +193,114 @@ export const getCurrentUser = asyncHandler(
 
 export const convertOAuthUserToLocalUser = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { firstName, lastName, username, country, dateOfBirth } =
-        finishProfileSchema.parse({
-          ...req.body,
-          dateOfBirth: new Date(req.body.dateOfBirth),
-        });
+    const { firstName, lastName, username, country, dateOfBirth } =
+      finishProfileSchema.parse({
+        ...req.body,
+        dateOfBirth: new Date(req.body.dateOfBirth),
+      });
 
-      const user = req.user as User;
+    const user = req.user as User;
 
-      if (isLocalUser(user)) {
-        next(badRequestError('Cannot convert a local user to a local user'));
-        return;
-      }
-
-      if (isGithubUser(user)) {
-        //Migrate github user to local user
-        const githubUser = await prisma.githubUser.findUnique({
-          where: {
-            githubUserId: user.githubUserId,
-          },
-          include: {
-            user: true,
-          },
-        });
-
-        if (!githubUser) {
-          next(notFoundError('github user not found'));
-          return;
-        }
-
-        if (githubUser.user) {
-          next(badRequestError('github user already has a local user'));
-          return;
-        }
-
-        const localUser = await prisma.user.create({
-          data: {
-            firstName: githubUser.firstName || firstName,
-            lastName: githubUser.lastName || lastName,
-            email: githubUser.email,
-            username: username.toLowerCase(),
-            UserInfo: {
-              create: {
-                country,
-                dateOfBirth,
-                gender: 'unkown',
-              },
-            },
-            githubUser: {
-              connect: {
-                githubUserId: user.githubUserId,
-              },
-            },
-            verified: true,
-          },
-        });
-        req.user = localUser;
-        next();
-        return;
-      }
-
-      if (isGoogleUser(user)) {
-        //Migrate google user to local user
-        const googleUser = await prisma.googleUser.findUnique({
-          where: {
-            googleUserId: user.googleUserId,
-          },
-          include: {
-            user: true,
-          },
-        });
-
-        if (!googleUser) {
-          next(notFoundError('google user not found'));
-          return;
-        }
-
-        if (googleUser.user) {
-          next(badRequestError('google user already has a local user'));
-          return;
-        }
-
-        const localUser = await prisma.user.create({
-          data: {
-            firstName: googleUser.firstName || firstName,
-            lastName: googleUser.lastName || lastName,
-            email: googleUser.email.toLowerCase(),
-            username: username.toLowerCase(),
-            UserInfo: {
-              create: {
-                country,
-                dateOfBirth,
-                gender: 'unkown',
-              },
-            },
-            googleUser: {
-              connect: {
-                googleUserId: user.googleUserId,
-              },
-            },
-            verified: true,
-          },
-        });
-        req.user = localUser;
-        next();
-        return;
-      }
-
-      next(internalError());
+    if (isLocalUser(user)) {
+      next(badRequestError('Cannot convert a local user to a local user'));
       return;
-    } catch (e) {
-      if (e instanceof z.ZodError) {
-        next(zodError(e.errors));
+    }
+
+    if (isGithubUser(user)) {
+      //Migrate github user to local user
+      const githubUser = await prisma.githubUser.findUnique({
+        where: {
+          githubUserId: user.githubUserId,
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      if (!githubUser) {
+        next(notFoundError('github user not found'));
         return;
       }
-      next(e);
+
+      if (githubUser.user) {
+        next(badRequestError('github user already has a local user'));
+        return;
+      }
+
+      const localUser = await prisma.user.create({
+        data: {
+          firstName: githubUser.firstName || firstName,
+          lastName: githubUser.lastName || lastName,
+          email: githubUser.email,
+          username: username.toLowerCase(),
+          UserInfo: {
+            create: {
+              country,
+              dateOfBirth,
+              gender: 'unkown',
+            },
+          },
+          githubUser: {
+            connect: {
+              githubUserId: user.githubUserId,
+            },
+          },
+          verified: true,
+        },
+      });
+      req.user = localUser;
+      next();
+      return;
     }
+
+    if (isGoogleUser(user)) {
+      //Migrate google user to local user
+      const googleUser = await prisma.googleUser.findUnique({
+        where: {
+          googleUserId: user.googleUserId,
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      if (!googleUser) {
+        next(notFoundError('google user not found'));
+        return;
+      }
+
+      if (googleUser.user) {
+        next(badRequestError('google user already has a local user'));
+        return;
+      }
+
+      const localUser = await prisma.user.create({
+        data: {
+          firstName: googleUser.firstName || firstName,
+          lastName: googleUser.lastName || lastName,
+          email: googleUser.email.toLowerCase(),
+          username: username.toLowerCase(),
+          UserInfo: {
+            create: {
+              country,
+              dateOfBirth,
+              gender: 'unkown',
+            },
+          },
+          googleUser: {
+            connect: {
+              googleUserId: user.googleUserId,
+            },
+          },
+          verified: true,
+        },
+      });
+      req.user = localUser;
+      next();
+      return;
+    }
+
+    next(internalError());
+    return;
   }
 );
