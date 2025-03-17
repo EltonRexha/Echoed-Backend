@@ -12,6 +12,9 @@ import path from 'path';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { imageUpload, videoUpload } from '../config/multer';
+import hasPermission from '../utils/abacPermissions';
+import { User as LocalUser } from '@prisma/client';
+import forbiddenError from '../errors/errorTypes/forbiddenError';
 
 export const createPost = asyncHandler(async function (
   req: Request,
@@ -71,7 +74,7 @@ const MAX_MEDIA_UPLOAD = 3;
 export const uploadPostImage = [
   imageUpload.array('images', MAX_MEDIA_UPLOAD),
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
-    const user = req.user as User;
+    const user = req.user as LocalUser;
     if (!req.files && !Array.isArray(req.files)) {
       next(badRequestError('No files provided'));
       return;
@@ -93,13 +96,29 @@ export const uploadPostImage = [
       },
     });
 
+    if (!post) {
+      next(notFoundError('Post not found'));
+      return;
+    }
+
+    const permissionToAccess = await hasPermission(
+      req.user as LocalUser,
+      post,
+      'update',
+      'Posts'
+    );
+    if (!permissionToAccess) {
+      next(forbiddenError("You don't have permissions to update resource"));
+      return;
+    }
+
     if (
       post?.Media &&
       post.Media.length + (req.files.length as number) >= MAX_MEDIA_UPLOAD
     ) {
       next(
         badRequestError(
-          'Maximum amount of resources uploaded to post exceded',
+          'Maximum amount of resources uploaded to post exceeded',
           'MAX_MEDIA'
         )
       );
@@ -178,13 +197,29 @@ export const uploadPostVideo = [
       },
     });
 
+    if (!post) {
+      next(notFoundError('Post not found'));
+      return;
+    }
+
+    const permissionToAccess = await hasPermission(
+      req.user as LocalUser,
+      post,
+      'update',
+      'Posts'
+    );
+    if (!permissionToAccess) {
+      next(forbiddenError("You don't have permissions to update resource"));
+      return;
+    }
+
     if (
       post?.Media &&
       post.Media.length + (req.files.length as number) >= MAX_MEDIA_UPLOAD
     ) {
       next(
         badRequestError(
-          'Maximum amount of resources uploaded to post exceded',
+          'Maximum amount of resources uploaded to post exceeded',
           'MAX_MEDIA'
         )
       );

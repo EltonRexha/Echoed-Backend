@@ -14,18 +14,10 @@ const storage = multer.diskStorage({
     cb(null, path.join(__dirname, '../..', '/tmp/uploads'));
   },
   filename: function (req, file, cb) {
-    console.log(file);
-    const splitedDotFile = file.originalname.split('.');
-    const fileExtension = splitedDotFile[splitedDotFile.length - 1]; 
+    const splitDotFile = file.originalname.split('.');
+    const fileExtension = splitDotFile[splitDotFile.length - 1];
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(
-      null,
-      file.fieldname +
-        '-' +
-        uniqueSuffix +
-        '.' +
-        fileExtension
-    );
+    cb(null, file.fieldname + '-' + uniqueSuffix + '.' + fileExtension);
   },
 });
 
@@ -35,12 +27,10 @@ const imageUpload = multer({
     fileSize: 15 * 1024 * 1024,
   },
   fileFilter: (req, file, cb) => {
-    if (
-      allowedImageTypes.includes(file.mimetype)
-    ) {
+    if (allowedImageTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only images and videos are allowed.'));
+      cb(new Error('Invalid file type. Only images are allowed.'));
     }
   },
 });
@@ -54,9 +44,9 @@ const videoUpload = multer({
     if (allowedVideoTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only images and videos are allowed.'));
+      cb(new Error('Invalid file type. Only videos are allowed.'));
     }
   },
 });
 
-export {videoUpload, imageUpload};
+export { videoUpload, imageUpload };

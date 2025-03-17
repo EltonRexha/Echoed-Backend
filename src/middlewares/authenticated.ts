@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import authenticationTokenSchema from '../validations/authenticationTokenSchema';
 import JWT from 'jsonwebtoken';
-import unautherizedError from '../errors/errorTypes/unautherizedError';
+import unauthorizedError from '../errors/errorTypes/unauthorizedError';
 import tokenExpired from '../utils/tokenExpired';
 import { prisma } from '../db/client';
 import notFoundError from '../errors/errorTypes/notFoundError';
@@ -20,7 +20,7 @@ export default asyncHandler(async function (
     !('access_token' in req.cookies) ||
     typeof req.cookies.access_token !== 'string'
   ) {
-    next(unautherizedError('Access token not provided'));
+    next(unauthorizedError('Access token not provided'));
     return;
   }
 
@@ -36,12 +36,12 @@ export default asyncHandler(async function (
 
     //if the token is not a session token
     if (!access) {
-      next(unautherizedError('invalid token'));
+      next(unauthorizedError('invalid token'));
       return;
     }
 
     if (tokenExpired(exp)) {
-      next(unautherizedError('Token expired'));
+      next(unauthorizedError('Token expired'));
       return;
     }
 
@@ -71,13 +71,13 @@ export default asyncHandler(async function (
     }
 
     if (isLocalUser(user) && !user.verified) {
-      next(unautherizedError('User not verified'));
+      next(unauthorizedError('User not verified'));
       return;
     }
 
     req.user = user;
     next();
   } catch (e) {
-    next(unautherizedError('Invalid token'));
+    next(unauthorizedError('Invalid token'));
   }
 });

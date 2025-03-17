@@ -237,7 +237,7 @@ export const convertOAuthUserToLocalUser = asyncHandler(
             create: {
               country,
               dateOfBirth,
-              gender: 'unkown',
+              gender: 'unknown',
             },
           },
           githubUser: {
@@ -284,7 +284,7 @@ export const convertOAuthUserToLocalUser = asyncHandler(
             create: {
               country,
               dateOfBirth,
-              gender: 'unkown',
+              gender: 'unknown',
             },
           },
           googleUser: {
