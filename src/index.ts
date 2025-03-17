@@ -1,5 +1,11 @@
-import express, { NextFunction, Request, Response } from 'express';
 import dotenv from 'dotenv';
+import path from 'node:path';
+
+dotenv.config({
+  path: path.resolve(__dirname, '../.env'),
+});
+
+import express, { NextFunction, Request, Response } from 'express';
 import apiRouter from './routes/apiRouter';
 import cors from 'cors';
 import CustomError from './errors/customError';
@@ -10,7 +16,6 @@ import internalError from './errors/errorTypes/internalError';
 import zodError from './errors/errorTypes/zodError';
 import cloudinaryConfig from './config/cloudinary';
 
-dotenv.config();
 cloudinaryConfig();
 const app = express();
 

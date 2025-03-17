@@ -35,7 +35,7 @@ const userSchema = z.object({
       'Password contains invalid characters'
     ),
   country: z.enum(COUNTRIES as [string, ...string[]]),
-  gender: z.enum(['male', 'female', 'other', 'unkown']),
+  gender: z.enum(['male', 'female', 'other', 'unknown']),
   dateOfBirth: z.date().refine((dob) => dob <= subYears(new Date(), 13), {
     message: 'User must be at least 13 years old',
   }),

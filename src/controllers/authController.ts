@@ -7,7 +7,7 @@ import authenticationTokenSchema from '../validations/authenticationTokenSchema'
 import { z } from 'zod';
 import { prisma } from '../db/client';
 import bcrypt from 'bcryptjs';
-import unautherizedError from '../errors/errorTypes/unautherizedError';
+import unauthorizedError from '../errors/errorTypes/unauthorizedError';
 import forbiddenError from '../errors/errorTypes/forbiddenError';
 import badRequestError from '../errors/errorTypes/badRequestError';
 import notFoundError from '../errors/errorTypes/notFoundError';
@@ -58,19 +58,19 @@ export const login = [
     });
 
     if (!user) {
-      next(unautherizedError('Invalid credentials'));
+      next(unauthorizedError('Invalid credentials'));
       return;
     }
 
     if (!user.password) {
-      next(unautherizedError('Please login with your OAuth provider'));
+      next(unauthorizedError('Please login with your OAuth provider'));
       return;
     }
 
     const passwordCorrect = await bcrypt.compare(password, user.password);
 
     if (!passwordCorrect) {
-      next(unautherizedError('Invalid credentials'));
+      next(unauthorizedError('Invalid credentials'));
       return;
     }
 
@@ -115,7 +115,7 @@ export const refreshToken = [
     }
 
     if (storedToken.revoked) {
-      next(unautherizedError('Token revoked'));
+      next(unauthorizedError('Token revoked'));
       return;
     }
 
@@ -127,13 +127,13 @@ export const refreshToken = [
       } = authenticationTokenSchema.parse(parsedToken);
 
       if (!refresh) {
-        next(unautherizedError('Invalid token'));
+        next(unauthorizedError('Invalid token'));
         return;
       }
 
       //If token expired
       if (tokenExpired(exp)) {
-        next(unautherizedError('Token expired'));
+        next(unauthorizedError('Token expired'));
         return;
       }
 
@@ -167,7 +167,7 @@ export const refreshToken = [
 
       return;
     } catch (e) {
-      next(unautherizedError('Invalid token'));
+      next(unauthorizedError('Invalid token'));
     }
   }),
   sendTokens,
