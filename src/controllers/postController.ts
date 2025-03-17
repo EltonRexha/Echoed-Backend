@@ -4,12 +4,14 @@ import { User } from '../types/user';
 import { prisma } from '../db/client';
 import asyncHandler from 'express-async-handler';
 import internalError from '../errors/errorTypes/internalError';
-import upload from '../config/multer';
 import { readFile } from 'fs/promises';
 import badRequestError from '../errors/errorTypes/badRequestError';
 import uploadStreamToCloudinary from '../utils/uploadStreamToCloudinary';
 import { unlink } from 'fs/promises';
 import path from 'path';
+import notFoundError from '../errors/errorTypes/notFoundError';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { imageUpload } from '../config/multer';
 
 export const createPost = asyncHandler(async function (
   req: Request,
@@ -64,8 +66,10 @@ export const createPost = asyncHandler(async function (
   }
 });
 
+const MAX_MEDIA_UPLOAD = 3;
+
 export const uploadPostImage = [
-  upload.array('images', 3),
+  imageUpload.array('images', MAX_MEDIA_UPLOAD),
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const user = req.user as User;
     if (!req.files && !Array.isArray(req.files)) {
@@ -74,10 +78,28 @@ export const uploadPostImage = [
     }
 
     const { postId } = req.params;
-    console.log(postId);
 
     if (!postId) {
       next(badRequestError('Post is required'));
+      return;
+    }
+
+    const post = await prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      include: {
+        Media: true,
+      },
+    });
+
+    if (post?.Media && post.Media.length >= MAX_MEDIA_UPLOAD) {
+      next(
+        badRequestError(
+          'Maximum amount of resources uploaded to post exceded',
+          'MAX_MEDIA'
+        )
+      );
       return;
     }
 
@@ -88,28 +110,37 @@ export const uploadPostImage = [
         const filePath = file.path;
         const cloudinaryPath = `uploads/users/${user.id}/posts/${postId}/images`;
 
-        await prisma.post.update({
-          where: {
-            id: postId as string,
-          },
-          data: {
-            media: {
-              create: {
-                byteSize: file.size,
-                mimeType: file.mimetype,
-                path: cloudinaryPath,
+        try {
+          await prisma.post.update({
+            where: {
+              id: postId as string,
+            },
+            data: {
+              Media: {
+                create: {
+                  byteSize: file.size,
+                  mimeType: file.mimetype,
+                  path: cloudinaryPath,
+                },
               },
             },
-          },
-        });
+          });
 
-        const storedFile = await readFile(filePath);
-        await uploadStreamToCloudinary(storedFile, {
-          folder: cloudinaryPath,
-          resource_type: 'image',
-          public_id: `file_${Date.now()}`,
-        });
-        await unlink(filePath);
+          const storedFile = await readFile(filePath);
+          await uploadStreamToCloudinary(storedFile, {
+            folder: cloudinaryPath,
+            resource_type: 'image',
+            public_id: `file_${Date.now()}`,
+          });
+        } catch (e) {
+          if (e instanceof PrismaClientKnownRequestError) {
+            throw notFoundError('Post not found');
+          } else {
+            throw e;
+          }
+        } finally {
+          await unlink(filePath);
+        }
       })
     );
 

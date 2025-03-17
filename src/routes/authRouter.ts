@@ -6,7 +6,12 @@ import {
 } from '../controllers/emailController';
 import '../config/passport';
 import OAuthRouter from './oAuthRouter';
-import { login, logout, refreshToken, resetPassword } from '../controllers/authController';
+import {
+  login,
+  logout,
+  refreshToken,
+  resetPassword,
+} from '../controllers/authController';
 import authenticate from '../middlewares/authenticated';
 
 const router = Router();
@@ -18,12 +23,6 @@ router.post('/refresh', refreshToken);
 router.post('/logout', logout);
 router.post('/user/email/send-reset-password', sendResetPassword);
 router.put('/user/reset-password', resetPassword);
-router.get('/protected', authenticate, (req, res) => {
-  console.log(req.user);
-  res.status(200).json({
-    message: 'Authenticated',
-  });
-});
 router.use(OAuthRouter);
 
 export default router;

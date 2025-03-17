@@ -95,21 +95,20 @@ model UserInfo {
 }
 
 model Post {
-  id           String        @id @default(uuid())
-  author       User          @relation(fields: [userId], references: [id])
-  userId       String
-  content      String        @db.Text
-  Reposts      Post[]        @relation(name: "reposts")
-  MainPost     Post?         @relation(fields: [mainPostId], references: [id], name: "reposts")
-  mainPostId   String?
-  likedBy      User[]        @relation(name: "likes")
-  savedBy      User[]        @relation(name: "saved")
-  media        Media?        @relation(fields: [mediaId], references: [id])
-  mediaId      String?
+  id         String  @id @default(uuid())
+  author     User    @relation(fields: [userId], references: [id])
+  userId     String
+  content    String  @db.Text
+  Reposts    Post[]  @relation(name: "reposts")
+  MainPost   Post?   @relation(fields: [mainPostId], references: [id], name: "reposts")
+  mainPostId String?
+  likedBy    User[]  @relation(name: "likes")
+  savedBy    User[]  @relation(name: "saved")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   postComments postComment[]
   postTags     postTags[]
+  Media        Media[]
 
   @@map("posts")
 }
@@ -150,7 +149,8 @@ model Media {
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
   postComments postComment[]
-  Posts        Post[]
+  postMedia    Post?         @relation(fields: [postMediaId], references: [id])
+  postMediaId  String?
   User         User[]
 }
 
