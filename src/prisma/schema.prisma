@@ -40,6 +40,7 @@ model User {
   Role                  Roles[]                 @default([user])
   blockedBy             User[]                  @relation(name: "blocked")
   blocks                User[]                  @relation(name: "blocked")
+  postComment           postComment[]
 
   @@index([email])
   @@index([username])
@@ -120,8 +121,8 @@ model postTags {
   name  String @unique
   posts Post[]
 
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
   userPreferredTag userPreferredTag[]
 
   @@map("post_tags")
@@ -129,31 +130,33 @@ model postTags {
 
 model postComment {
   id             String        @id @default(uuid())
+  author         User          @relation(fields: [authorId], references: [id])
+  authorId       String
   post           Post          @relation(fields: [post_id], references: [id])
   post_id        String        @map("postsId")
   content        String
   parentComment  postComment?  @relation(fields: [postCommentsId], references: [id], name: "comments")
   postCommentsId String?
   comments       postComment[] @relation(name: "comments")
-  media          Media         @relation(fields: [mediaId], references: [id])
-  mediaId        String
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
+  Media          Media[]
 
   @@map("postComments")
 }
 
 model Media {
-  id           String        @id @default(uuid())
-  mimeType     String        @map("mime_type")
-  path         String
-  byteSize     Int           @map("byte_size")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-  postComments postComment[]
-  postMedia    Post?         @relation(fields: [postMediaId], references: [id])
-  postMediaId  String?
-  User         User[]
+  id             String       @id @default(uuid())
+  mimeType       String       @map("mime_type")
+  path           String
+  byteSize       Int          @map("byte_size")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  postMedia      Post?        @relation(fields: [postMediaId], references: [id])
+  postMediaId    String?
+  commentMedia   postComment? @relation(fields: [commentMediaId], references: [id])
+  commentMediaId String?
+  User           User[]
 }
 
 model Group {
