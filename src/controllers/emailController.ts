@@ -3,14 +3,14 @@ import { prisma } from '../db/client';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import { addMinutes, isAfter, subMinutes } from 'date-fns';
 import manyRequestsError from '../errors/errorTypes/manyRequestsError';
-import createJWT from '../utils/createJWT';
-import sendVerifyEmail from '../utils/sendVerifyMail';
+import createJWT from '../utils/tokens/createJWT';
+import sendVerifyEmail from '../utils/mail/sendVerifyMail';
 import goneError from '../errors/errorTypes/goneError';
 import conflictError from '../errors/errorTypes/conflictError';
 import { resetPasswordToken, userVerificationToken } from '@prisma/client';
 import asyncHandler from 'express-async-handler';
 import { z } from 'zod';
-import sendResetPasswordEmail from '../utils/sendResetPasswordMail';
+import sendResetPasswordEmail from '../utils/mail/sendResetPasswordMail';
 import findUserSchema from '../validations/findUserSchema';
 
 const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(

@@ -4,11 +4,12 @@
 
 import { Post, Roles, User } from '@prisma/client';
 import { prisma } from '../db/client';
+import UserIsBlocked from './UserIsBlocked';
 
 type Resources = {
   Posts: {
     resource: Post;
-    actions: 'create' | 'read' | 'update' | 'delete';
+    actions: 'create' | 'read' | 'update' | 'delete' | 'like' | 'comment';
   };
 };
 
@@ -30,40 +31,35 @@ type permissionRoles = {
 const rolesWithPermission = {
   admin: {
     Posts: {
+      like: true,
       create: true,
       read: true,
       update: true,
       delete: true,
+      comment: true,
     },
   },
   moderator: {
     Posts: {
+      like: true,
       create: true,
       read: true,
       update: true,
       delete: true,
+      comment: true,
     },
   },
   user: {
     Posts: {
       create: true,
+      comment: async (user, post) => {
+        return !(await UserIsBlocked(user.id, post.userId));
+      },
+      like: async (user, post) => {
+        return !(await UserIsBlocked(user.id, post.userId));
+      },
       read: async (user, post) => {
-        const prismaUser = await prisma.user.findUnique({
-          where: {
-            id: user.id,
-          },
-          include: {
-            blockedBy: true,
-          },
-        });
-
-        if (!prismaUser) {
-          return false;
-        }
-
-        return prismaUser.blockedBy.some(
-          (blockedByUser) => blockedByUser.id === post.userId
-        );
+        return !(await UserIsBlocked(user.id, post.userId));
       },
       delete: (user, post) => user.id === post.userId,
       update: (user, post) => user.id === post.userId,

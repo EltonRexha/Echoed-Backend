@@ -15,6 +15,11 @@ import { imageUpload, videoUpload } from '../config/multer';
 import hasPermission from '../utils/abacPermissions';
 import { User as LocalUser } from '@prisma/client';
 import forbiddenError from '../errors/errorTypes/forbiddenError';
+import commentSchema from '../validations/commentSchema';
+import getPostSchema from '../validations/getPostSchema';
+import postService from '../services/postService';
+
+const MAX_MEDIA_UPLOAD = 3;
 
 export const createPost = asyncHandler(async function (
   req: Request,
@@ -69,7 +74,30 @@ export const createPost = asyncHandler(async function (
   }
 });
 
-const MAX_MEDIA_UPLOAD = 3;
+export const getPost = asyncHandler(async function (
+  req: Request,
+  res: Response
+) {
+  const query = req.query;
+  const data = getPostSchema.parse(query);
+  const page = data.page ? parseInt(data.page) : 1;
+  const limit = data.limit ? parseInt(data.limit) : 10;
+  const posts = await postService.getPosts({
+    postId: data.id,
+    authorId: data.authorId,
+    authorEmail: data.authorEmail,
+    authorUsername: data.authorUsername,
+    likedByUserId: data.likedByUserId,
+    savedByUserId: data.savedByUserId,
+    limit: limit,
+    page: page,
+  });
+
+  res.json({
+    posts,
+    page,
+  });
+});
 
 export const uploadPostImage = [
   imageUpload.array('images', MAX_MEDIA_UPLOAD),
@@ -272,3 +300,140 @@ export const uploadPostVideo = [
     });
   }),
 ];
+
+export const likePost = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user as LocalUser;
+
+    const { postId } = req.params;
+
+    const post = await prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+    });
+
+    if (!post) {
+      next(notFoundError('Post not found'));
+      return;
+    }
+
+    const permissionToAccess = await hasPermission(user, post, 'like', 'Posts');
+
+    if (!permissionToAccess) {
+      next(forbiddenError("You don't have permissions to like resource"));
+      return;
+    }
+
+    await prisma.post.update({
+      where: {
+        id: postId,
+      },
+      data: {
+        likedBy: {
+          connect: {
+            id: user.id,
+          },
+        },
+      },
+    });
+
+    res.status(200).json({
+      message: 'Successfully liked post',
+    });
+  }
+);
+
+export const commentPost = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user as LocalUser;
+
+    const { postId } = req.params;
+
+    const post = await prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+    });
+
+    if (!post) {
+      next(notFoundError('Post not found'));
+      return;
+    }
+
+    const permissionToAccess = await hasPermission(
+      user,
+      post,
+      'comment',
+      'Posts'
+    );
+
+    if (!permissionToAccess) {
+      next(
+        forbiddenError("You don't have permissions to comment on this post")
+      );
+      return;
+    }
+
+    const { content, parentCommentId } = commentSchema.parse(req.body);
+
+    let comment;
+
+    try {
+      if (!parentCommentId) {
+        comment = await prisma.postComment.create({
+          data: {
+            content,
+            post: {
+              connect: {
+                id: postId,
+              },
+            },
+            author: {
+              connect: {
+                id: user.id,
+              },
+            },
+          },
+        });
+      } else {
+        comment = await prisma.postComment.create({
+          data: {
+            content,
+            post: {
+              connect: {
+                id: postId,
+              },
+            },
+            parentComment: {
+              connect: {
+                id: parentCommentId,
+              },
+            },
+            author: {
+              connect: {
+                id: user.id,
+              },
+            },
+          },
+        });
+      }
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') {
+          next(badRequestError('The referenced comment was not found.'));
+          return;
+        }
+      }
+
+      throw error;
+    }
+
+    res.status(200).json({
+      message: 'successfully commented on post',
+      details: {
+        commentId: comment.id,
+      },
+    });
+  }
+);

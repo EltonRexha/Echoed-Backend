@@ -4,8 +4,8 @@ import userSchema from '../validations/userSchema';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import internalError from '../errors/errorTypes/internalError';
-import sendVerifyEmail from '../utils/sendVerifyMail';
-import createJWT from '../utils/createJWT';
+import sendVerifyEmail from '../utils/mail/sendVerifyMail';
+import createJWT from '../utils/tokens/createJWT';
 import { addMinutes } from 'date-fns';
 import getUserSchema from '../validations/getUserSchema';
 import findUser from '../utils/findUser';
@@ -29,7 +29,7 @@ export const getUsers = asyncHandler(
     const limit = Number(params.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const [users, totalUsers] = await Promise.all([
+    const users = await Promise.all([
       prisma.user.findMany({
         where: {
           username: {
@@ -52,13 +52,11 @@ export const getUsers = asyncHandler(
         skip,
         take: limit,
       }),
-      prisma.user.count(),
     ]);
 
     res.json({
       users,
       page,
-      totalPages: Math.ceil(totalUsers / limit),
     });
   }
 );
