@@ -1,4 +1,4 @@
-import emailTransporter from '../config/emailTransporter';
+import emailTransporter from '../../config/emailTransporter';
 
 async function sendEmail(to: string, subject: string, html: string) {
   await emailTransporter.sendMail({

@@ -1,6 +1,6 @@
 import { UserType } from '@prisma/client';
-import { prisma } from '../db/client';
-import { User } from '../types/user';
+import { prisma } from '../../db/client';
+import { User } from '../../types/user';
 import createJWT from './createJWT';
 
 export default async function (user: User): Promise<string> {

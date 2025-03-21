@@ -16,7 +16,8 @@ import hasPermission from '../utils/abacPermissions';
 import { User as LocalUser } from '@prisma/client';
 import forbiddenError from '../errors/errorTypes/forbiddenError';
 import commentSchema from '../validations/commentSchema';
-import { connect } from 'http2';
+import getPostSchema from '../validations/getPostSchema';
+import postService from '../services/postService';
 
 const MAX_MEDIA_UPLOAD = 3;
 
@@ -71,6 +72,31 @@ export const createPost = asyncHandler(async function (
   } catch (e) {
     next(internalError('Could not create post'));
   }
+});
+
+export const getPost = asyncHandler(async function (
+  req: Request,
+  res: Response
+) {
+  const query = req.query;
+  const data = getPostSchema.parse(query);
+  const page = data.page ? parseInt(data.page) : 1;
+  const limit = data.limit ? parseInt(data.limit) : 10;
+  const posts = await postService.getPosts({
+    postId: data.id,
+    authorId: data.authorId,
+    authorEmail: data.authorEmail,
+    authorUsername: data.authorUsername,
+    likedByUserId: data.likedByUserId,
+    savedByUserId: data.savedByUserId,
+    limit: limit,
+    page: page,
+  });
+
+  res.json({
+    posts,
+    page,
+  });
 });
 
 export const uploadPostImage = [
@@ -395,9 +421,7 @@ export const commentPost = asyncHandler(
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {
-          next(badRequestError(
-            'The referenced comment was not found.'
-          ));
+          next(badRequestError('The referenced comment was not found.'));
           return;
         }
       }

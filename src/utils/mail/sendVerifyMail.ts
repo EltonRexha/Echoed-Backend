@@ -1,5 +1,5 @@
 import { URL } from 'node:url';
-import emailTransporter from '../config/emailTransporter';
+import emailTransporter from '../../config/emailTransporter';
 import nodemailer from 'nodemailer';
 import { User } from '@prisma/client';
 

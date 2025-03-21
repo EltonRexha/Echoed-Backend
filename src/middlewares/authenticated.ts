@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import authenticationTokenSchema from '../validations/authenticationTokenSchema';
 import JWT from 'jsonwebtoken';
 import unauthorizedError from '../errors/errorTypes/unauthorizedError';
-import tokenExpired from '../utils/tokenExpired';
+import tokenExpired from '../utils/tokens/tokenExpired';
 import { prisma } from '../db/client';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import asyncHandler from 'express-async-handler';

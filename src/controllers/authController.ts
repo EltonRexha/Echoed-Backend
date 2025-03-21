@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
-import createAccessToken from '../utils/createAccessToken';
-import createRefreshToken from '../utils/createRefreshToken';
+import createAccessToken from '../utils/tokens/createAccessToken';
+import createRefreshToken from '../utils/tokens/createRefreshToken';
 import { User } from '../types/user';
 import loginSchema from '../validations/loginSchema';
 import authenticationTokenSchema from '../validations/authenticationTokenSchema';
@@ -12,7 +12,7 @@ import forbiddenError from '../errors/errorTypes/forbiddenError';
 import badRequestError from '../errors/errorTypes/badRequestError';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import JWT from 'jsonwebtoken';
-import tokenExpired from '../utils/tokenExpired';
+import tokenExpired from '../utils/tokens/tokenExpired';
 import asyncHandler from 'express-async-handler';
 import resetPasswordSchema from '../validations/resetPasswordSchema';
 import { isAfter } from 'date-fns';
