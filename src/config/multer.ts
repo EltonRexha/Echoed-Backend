@@ -14,8 +14,7 @@ const storage = multer.diskStorage({
     cb(null, path.join(__dirname, '../..', '/tmp/uploads'));
   },
   filename: function (req, file, cb) {
-    const splitDotFile = file.originalname.split('.');
-    const fileExtension = splitDotFile[splitDotFile.length - 1];
+    const fileExtension = path.extname(file.originalname);
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, file.fieldname + '-' + uniqueSuffix + '.' + fileExtension);
   },

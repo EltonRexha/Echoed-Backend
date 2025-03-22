@@ -1,7 +1,10 @@
 import { Readable } from 'stream';
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary, UploadApiOptions } from 'cloudinary';
 
-const uploadStreamToCloudinary = (buffer: Buffer, options: any): Promise<any> => {
+const uploadStreamToCloudinary = (
+  buffer: Buffer,
+  options: UploadApiOptions
+): Promise<any> => {
   return new Promise((resolve, reject) => {
     // Create a stream from the buffer
     const stream = Readable.from(buffer);

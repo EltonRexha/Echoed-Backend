@@ -17,6 +17,9 @@ import asyncHandler from 'express-async-handler';
 import resetPasswordSchema from '../validations/resetPasswordSchema';
 import { isAfter } from 'date-fns';
 import goneError from '../errors/errorTypes/goneError';
+import { userService } from '../services/userService';
+import { resetPasswordTokenService } from '../services/resetPasswordTokenService';
+import { refreshTokenService } from '../services/refreshTokenService';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const FRONTEND_URL = process.env.FRONT_URL as string;
@@ -50,12 +53,7 @@ export const login = [
     const { username, email, password } = loginSchema.parse(req.body);
 
     //User exists?
-    const user = await prisma.user.findUnique({
-      where: {
-        email: email?.toLowerCase(),
-        username: username?.toLowerCase(),
-      },
-    });
+    const user = await userService.getLocalUser({ username, email });
 
     if (!user) {
       next(unauthorizedError('Invalid credentials'));
@@ -103,11 +101,7 @@ export const refreshToken = [
     const { refresh_token: token } = req.cookies;
 
     //Check if the token is valid and not revoked
-    const storedToken = await prisma.refreshTokens.findUnique({
-      where: {
-        token: token,
-      },
-    });
+    const storedToken = await refreshTokenService.getRefreshToken({ token });
 
     if (!storedToken) {
       next(notFoundError('Token not found'));
@@ -138,21 +132,9 @@ export const refreshToken = [
       }
 
       const [localUser, googleUser, githubUser] = await Promise.all([
-        prisma.user.findUnique({
-          where: {
-            id: userId,
-          },
-        }),
-        prisma.googleUser.findUnique({
-          where: {
-            id: userId,
-          },
-        }),
-        prisma.githubUser.findUnique({
-          where: {
-            id: userId,
-          },
-        }),
+        userService.getLocalUser({ id: userId }),
+        userService.getGoogleUser({ id: userId }),
+        userService.getGithubUser({ id: userId }),
       ]);
 
       const user = localUser || googleUser || githubUser;
@@ -220,16 +202,10 @@ export const resetPassword = asyncHandler(
     const { reset_password_token: resetPasswordToken, password } =
       resetPasswordSchema.parse(req.body);
 
-    const storedResetPasswordToken = await prisma.resetPasswordToken.findUnique(
-      {
-        where: {
-          token: resetPasswordToken,
-        },
-        include: {
-          User: true,
-        },
-      }
-    );
+    const storedResetPasswordToken =
+      await resetPasswordTokenService.getResetPasswordToken({
+        token: resetPasswordToken,
+      });
 
     if (!storedResetPasswordToken) {
       next(notFoundError('Reset password token not found'));

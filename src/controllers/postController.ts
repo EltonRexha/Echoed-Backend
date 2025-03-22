@@ -1,14 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 import createPostSchema from '../validations/createPostSchema';
 import { User } from '../types/user';
-import { prisma } from '../db/client';
 import asyncHandler from 'express-async-handler';
 import internalError from '../errors/errorTypes/internalError';
 import { readFile } from 'fs/promises';
 import badRequestError from '../errors/errorTypes/badRequestError';
 import uploadStreamToCloudinary from '../utils/uploadStreamToCloudinary';
 import { unlink } from 'fs/promises';
-import path from 'path';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { imageUpload, videoUpload } from '../config/multer';
@@ -17,7 +15,9 @@ import { User as LocalUser } from '@prisma/client';
 import forbiddenError from '../errors/errorTypes/forbiddenError';
 import commentSchema from '../validations/commentSchema';
 import getPostSchema from '../validations/getPostSchema';
-import postService from '../services/postService';
+import { postService } from '../services/postService';
+import { commentService } from '../services/commentService';
+import uploadFiles from '../utils/uploadFiles';
 
 const MAX_MEDIA_UPLOAD = 3;
 
@@ -30,44 +30,17 @@ export const createPost = asyncHandler(async function (
   const { content, tags } = createPostSchema.parse(req.body);
 
   try {
-    await prisma.$transaction(async () => {
-      const postTags = await Promise.all(
-        tags.map(async (tag) => {
-          const lowerCaseTag = tag.toLowerCase();
-          const currentTag = await prisma.postTags.upsert({
-            update: {},
-            where: {
-              name: lowerCaseTag,
-            },
-            create: {
-              name: lowerCaseTag,
-            },
-          });
+    const post = await postService.createPost({
+      tags,
+      content,
+      userId: user.id,
+    });
 
-          return { id: currentTag.id };
-        })
-      );
-
-      const post = await prisma.post.create({
-        data: {
-          content,
-          author: {
-            connect: {
-              id: user.id,
-            },
-          },
-          postTags: {
-            connect: postTags,
-          },
-        },
-      });
-
-      res.status(200).json({
-        message: 'Successfully created post',
-        details: {
-          postId: post.id,
-        },
-      });
+    res.status(200).json({
+      message: 'Successfully created post',
+      details: {
+        postId: post.id,
+      },
     });
   } catch (e) {
     next(internalError('Could not create post'));
@@ -115,14 +88,7 @@ export const uploadPostImage = [
       return;
     }
 
-    const post = await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
-      include: {
-        Media: true,
-      },
-    });
+    const post = await postService.getPost({ id: postId });
 
     if (!post) {
       next(notFoundError('Post not found'));
@@ -142,7 +108,7 @@ export const uploadPostImage = [
 
     if (
       post?.Media &&
-      post.Media.length + (req.files.length as number) >= MAX_MEDIA_UPLOAD
+      post.Media.length + (req.files.length as number) > MAX_MEDIA_UPLOAD
     ) {
       next(
         badRequestError(
@@ -155,44 +121,7 @@ export const uploadPostImage = [
 
     const files = req.files as Express.Multer.File[];
 
-    await Promise.all(
-      files.map(async (file) => {
-        const filePath = file.path;
-        const cloudinaryPath = `uploads/users/${user.id}/posts/${postId}/images`;
-
-        try {
-          await prisma.post.update({
-            where: {
-              id: postId as string,
-            },
-            data: {
-              Media: {
-                create: {
-                  byteSize: file.size,
-                  mimeType: file.mimetype,
-                  path: cloudinaryPath,
-                },
-              },
-            },
-          });
-
-          const storedFile = await readFile(filePath);
-          await uploadStreamToCloudinary(storedFile, {
-            folder: cloudinaryPath,
-            resource_type: 'image',
-            public_id: `file_${Date.now()}`,
-          });
-        } catch (e) {
-          if (e instanceof PrismaClientKnownRequestError) {
-            throw notFoundError('Post not found');
-          } else {
-            throw e;
-          }
-        } finally {
-          await unlink(filePath);
-        }
-      })
-    );
+    await uploadFiles({ files, postId, userId: user.id });
 
     res.status(200).json({
       message: 'successfully uploaded image',
@@ -216,14 +145,7 @@ export const uploadPostVideo = [
       return;
     }
 
-    const post = await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
-      include: {
-        Media: true,
-      },
-    });
+    const post = await postService.getPost({ id: postId });
 
     if (!post) {
       next(notFoundError('Post not found'));
@@ -243,7 +165,7 @@ export const uploadPostVideo = [
 
     if (
       post?.Media &&
-      post.Media.length + (req.files.length as number) >= MAX_MEDIA_UPLOAD
+      post.Media.length + (req.files.length as number) > MAX_MEDIA_UPLOAD
     ) {
       next(
         badRequestError(
@@ -256,44 +178,7 @@ export const uploadPostVideo = [
 
     const files = req.files as Express.Multer.File[];
 
-    await Promise.all(
-      files.map(async (file) => {
-        const filePath = file.path;
-        const cloudinaryPath = `uploads/users/${user.id}/posts/${postId}/videos`;
-
-        try {
-          await prisma.post.update({
-            where: {
-              id: postId as string,
-            },
-            data: {
-              Media: {
-                create: {
-                  byteSize: file.size,
-                  mimeType: file.mimetype,
-                  path: cloudinaryPath,
-                },
-              },
-            },
-          });
-
-          const storedFile = await readFile(filePath);
-          await uploadStreamToCloudinary(storedFile, {
-            folder: cloudinaryPath,
-            resource_type: 'video',
-            public_id: `file_${Date.now()}`,
-          });
-        } catch (e) {
-          if (e instanceof PrismaClientKnownRequestError) {
-            throw notFoundError('Post not found');
-          } else {
-            throw e;
-          }
-        } finally {
-          await unlink(filePath);
-        }
-      })
-    );
+    await uploadFiles({ files, postId, userId: user.id });
 
     res.status(200).json({
       message: 'successfully uploaded video',
@@ -307,11 +192,7 @@ export const likePost = asyncHandler(
 
     const { postId } = req.params;
 
-    const post = await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
-    });
+    const post = await postService.getPost({ id: postId });
 
     if (!post) {
       next(notFoundError('Post not found'));
@@ -325,18 +206,7 @@ export const likePost = asyncHandler(
       return;
     }
 
-    await prisma.post.update({
-      where: {
-        id: postId,
-      },
-      data: {
-        likedBy: {
-          connect: {
-            id: user.id,
-          },
-        },
-      },
-    });
+    postService.likePost({ userId: user.id, postId });
 
     res.status(200).json({
       message: 'Successfully liked post',
@@ -350,11 +220,7 @@ export const commentPost = asyncHandler(
 
     const { postId } = req.params;
 
-    const post = await prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
-    });
+    const post = await postService.getPost({ id: postId });
 
     if (!post) {
       next(notFoundError('Post not found'));
@@ -380,44 +246,12 @@ export const commentPost = asyncHandler(
     let comment;
 
     try {
-      if (!parentCommentId) {
-        comment = await prisma.postComment.create({
-          data: {
-            content,
-            post: {
-              connect: {
-                id: postId,
-              },
-            },
-            author: {
-              connect: {
-                id: user.id,
-              },
-            },
-          },
-        });
-      } else {
-        comment = await prisma.postComment.create({
-          data: {
-            content,
-            post: {
-              connect: {
-                id: postId,
-              },
-            },
-            parentComment: {
-              connect: {
-                id: parentCommentId,
-              },
-            },
-            author: {
-              connect: {
-                id: user.id,
-              },
-            },
-          },
-        });
-      }
+      comment = await commentService.createComment({
+        content,
+        postId,
+        userId: user.id,
+        parentCommentId,
+      });
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2025') {

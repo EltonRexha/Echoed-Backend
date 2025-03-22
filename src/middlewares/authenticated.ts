@@ -7,6 +7,7 @@ import { prisma } from '../db/client';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import asyncHandler from 'express-async-handler';
 import { isLocalUser } from '../types/user';
+import { userService } from '../services/userService';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
@@ -46,21 +47,9 @@ export default asyncHandler(async function (
     }
 
     const [localUser, googleUser, githubUser] = await Promise.all([
-      prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-      }),
-      prisma.googleUser.findUnique({
-        where: {
-          id: userId,
-        },
-      }),
-      prisma.githubUser.findUnique({
-        where: {
-          id: userId,
-        },
-      }),
+      userService.getLocalUser({ id: userId }),
+      userService.getGoogleUser({ googleUserId: userId }),
+      userService.getGithubUser({ githubUserId: userId }),
     ]);
 
     const user = localUser || googleUser || githubUser;
