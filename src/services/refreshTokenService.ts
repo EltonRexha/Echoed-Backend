@@ -15,11 +15,9 @@ export namespace refreshTokenService {
 
   /**Creates a refresh token or returns a refresh token if it exists */
   export async function createRefreshToken({
-    revoked,
     token,
     user,
   }: {
-    revoked: boolean;
     token: string;
     user: User;
   }) {

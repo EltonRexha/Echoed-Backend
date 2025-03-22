@@ -1,14 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 import createPostSchema from '../validations/createPostSchema';
 import { User } from '../types/user';
-import { prisma } from '../db/client';
 import asyncHandler from 'express-async-handler';
 import internalError from '../errors/errorTypes/internalError';
 import { readFile } from 'fs/promises';
 import badRequestError from '../errors/errorTypes/badRequestError';
 import uploadStreamToCloudinary from '../utils/uploadStreamToCloudinary';
 import { unlink } from 'fs/promises';
-import path from 'path';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { imageUpload, videoUpload } from '../config/multer';
@@ -19,6 +17,7 @@ import commentSchema from '../validations/commentSchema';
 import getPostSchema from '../validations/getPostSchema';
 import { postService } from '../services/postService';
 import { commentService } from '../services/commentService';
+import uploadFiles from '../utils/uploadFiles';
 
 const MAX_MEDIA_UPLOAD = 3;
 
@@ -109,7 +108,7 @@ export const uploadPostImage = [
 
     if (
       post?.Media &&
-      post.Media.length + (req.files.length as number) >= MAX_MEDIA_UPLOAD
+      post.Media.length + (req.files.length as number) > MAX_MEDIA_UPLOAD
     ) {
       next(
         badRequestError(
@@ -122,38 +121,7 @@ export const uploadPostImage = [
 
     const files = req.files as Express.Multer.File[];
 
-    await Promise.all(
-      files.map(async (file) => {
-        const filePath = file.path;
-        const cloudinaryPath = `uploads/users/${user.id}/posts/${postId}/images`;
-
-        try {
-          await postService.addMediaToPost({
-            id: postId,
-            media: {
-              size: file.size,
-              mimetype: file.mimetype,
-              cloudinaryPath: cloudinaryPath,
-            },
-          });
-
-          const storedFile = await readFile(filePath);
-          await uploadStreamToCloudinary(storedFile, {
-            folder: cloudinaryPath,
-            resource_type: 'image',
-            public_id: `file_${Date.now()}`,
-          });
-        } catch (e) {
-          if (e instanceof PrismaClientKnownRequestError) {
-            throw notFoundError('Post not found');
-          } else {
-            throw e;
-          }
-        } finally {
-          await unlink(filePath);
-        }
-      })
-    );
+    await uploadFiles({ files, postId, userId: user.id });
 
     res.status(200).json({
       message: 'successfully uploaded image',
@@ -197,7 +165,7 @@ export const uploadPostVideo = [
 
     if (
       post?.Media &&
-      post.Media.length + (req.files.length as number) >= MAX_MEDIA_UPLOAD
+      post.Media.length + (req.files.length as number) > MAX_MEDIA_UPLOAD
     ) {
       next(
         badRequestError(
@@ -210,38 +178,7 @@ export const uploadPostVideo = [
 
     const files = req.files as Express.Multer.File[];
 
-    await Promise.all(
-      files.map(async (file) => {
-        const filePath = file.path;
-        const cloudinaryPath = `uploads/users/${user.id}/posts/${postId}/videos`;
-
-        try {
-          await postService.addMediaToPost({
-            id: postId,
-            media: {
-              size: file.size,
-              mimetype: file.mimetype,
-              cloudinaryPath: cloudinaryPath,
-            },
-          });
-
-          const storedFile = await readFile(filePath);
-          await uploadStreamToCloudinary(storedFile, {
-            folder: cloudinaryPath,
-            resource_type: 'video',
-            public_id: `file_${Date.now()}`,
-          });
-        } catch (e) {
-          if (e instanceof PrismaClientKnownRequestError) {
-            throw notFoundError('Post not found');
-          } else {
-            throw e;
-          }
-        } finally {
-          await unlink(filePath);
-        }
-      })
-    );
+    await uploadFiles({ files, postId, userId: user.id });
 
     res.status(200).json({
       message: 'successfully uploaded video',

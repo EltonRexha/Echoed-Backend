@@ -55,6 +55,11 @@ export namespace postService {
       },
       include: {
         Media: true,
+        postTags: {
+          select: {
+            name: true
+          }
+        }
       },
       skip,
       take: limit,

@@ -7,7 +7,7 @@ import { refreshTokenService } from '../../services/refreshTokenService';
 export default async function (user: User): Promise<string> {
   const token = createJWT({ ...user, refresh: true }, 7, 'd');
 
-  await refreshTokenService.createRefreshToken({ revoked: false, user, token });
+  await refreshTokenService.createRefreshToken({ user, token });
 
   return token;
 }
