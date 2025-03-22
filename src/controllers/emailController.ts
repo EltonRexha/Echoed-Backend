@@ -1,25 +1,17 @@
 import { NextFunction, Response, Request } from 'express';
-import { prisma } from '../db/client';
 import notFoundError from '../errors/errorTypes/notFoundError';
-import { addMinutes, isAfter, subMinutes } from 'date-fns';
+import { isAfter, subMinutes } from 'date-fns';
 import manyRequestsError from '../errors/errorTypes/manyRequestsError';
-import createJWT from '../utils/tokens/createJWT';
 import sendVerifyEmail from '../utils/mail/sendVerifyMail';
 import goneError from '../errors/errorTypes/goneError';
 import conflictError from '../errors/errorTypes/conflictError';
 import { resetPasswordToken, userVerificationToken } from '@prisma/client';
 import asyncHandler from 'express-async-handler';
-import { z } from 'zod';
 import sendResetPasswordEmail from '../utils/mail/sendResetPasswordMail';
 import findUserSchema from '../validations/findUserSchema';
-
-const EMAIL_VERIFICATION_TOKEN_MINUTES = parseInt(
-  process.env.EMAIL_VERIFICATION_TOKEN_DURATION_MINUTES as string
-);
-
-const RESET_PASSWORD_TOKEN_DURATION_MINUTES = parseInt(
-  process.env.RESET_PASSWORD_TOKEN_DURATION_MINUTES as string
-);
+import { userService } from '../services/userService';
+import { verificationTokenService } from '../services/verificationTokenService';
+import { resetPasswordTokenService } from '../services/resetPasswordTokenService';
 
 export const sendVerificationEmail = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -27,35 +19,17 @@ export const sendVerificationEmail = asyncHandler(
       user: { email, username, id },
     } = findUserSchema.parse(req.body);
 
-    const user = await prisma.user.findUnique({
-      where: {
-        email: email?.toLowerCase(),
-        username: username?.toLowerCase(),
-        id,
-      },
-    });
+    const user = await userService.getLocalUser({ email, username, id });
 
     if (!user || user.verified || !user.email) {
       next(notFoundError('User not found'));
       return;
     }
 
-    const now = new Date();
-
     //Get a tokens from newest to oldest
     const existingVerificationTokens =
-      await prisma.userVerificationToken.findMany({
-        where: {
-          expiresAt: {
-            gt: now,
-          },
-          user: {
-            id: user.id,
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+      await verificationTokenService.getFreshVerificationTokens({
+        userId: user.id,
       });
 
     const newestStoredVerificationToken = existingVerificationTokens[0] as
@@ -79,21 +53,12 @@ export const sendVerificationEmail = asyncHandler(
       }
     }
 
-    const verificationToken = createJWT(user, EMAIL_VERIFICATION_TOKEN_MINUTES);
+    const verificationToken =
+      await verificationTokenService.createUserVerificationToken({
+        userId: user.id,
+      });
 
-    await prisma.userVerificationToken.create({
-      data: {
-        expiresAt: addMinutes(new Date(), EMAIL_VERIFICATION_TOKEN_MINUTES),
-        token: verificationToken,
-        user: {
-          connect: {
-            id: user.id,
-          },
-        },
-      },
-    });
-
-    sendVerifyEmail(user.email, verificationToken, user);
+    sendVerifyEmail(user.email, verificationToken.token, user);
     res.status(200).json({
       message: 'successfully send verify user email',
     });
@@ -109,14 +74,8 @@ export const verifyEmail = asyncHandler(
       return;
     }
 
-    const verificationToken = await prisma.userVerificationToken.findUnique({
-      where: {
-        token: token,
-      },
-      include: {
-        user: true,
-      },
-    });
+    const verificationToken =
+      await verificationTokenService.getVerificationToken({ token });
 
     if (!verificationToken) {
       next(notFoundError('Token not found'));
@@ -142,14 +101,7 @@ export const verifyEmail = asyncHandler(
       return;
     }
 
-    await prisma.user.update({
-      where: {
-        id: user.id,
-      },
-      data: {
-        verified: true,
-      },
-    });
+    await userService.verifyUser({ userId: user.id });
 
     res.status(200).json({
       message: 'User successfully verified',
@@ -163,13 +115,7 @@ export const sendResetPassword = asyncHandler(
       user: { email, username, id },
     } = findUserSchema.parse(req.body);
 
-    const user = await prisma.user.findUnique({
-      where: {
-        email: email?.toLowerCase(),
-        username: username?.toLowerCase(),
-        id,
-      },
-    });
+    const user = await userService.getLocalUser({ email, username, id });
 
     if (!user || !user.email) {
       next(notFoundError('User not found'));
@@ -180,18 +126,8 @@ export const sendResetPassword = asyncHandler(
 
     //Get a tokens from newest to oldest
     const existingResetPasswordTokens =
-      await prisma.resetPasswordToken.findMany({
-        where: {
-          expiresAt: {
-            gt: now,
-          },
-          User: {
-            id: user.id,
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+      await resetPasswordTokenService.getFreshResetPasswordTokens({
+        userId: user.id,
       });
 
     const newestStoredResetPasswordToken = existingResetPasswordTokens[0] as
@@ -216,27 +152,12 @@ export const sendResetPassword = asyncHandler(
       }
     }
 
-    const resetPasswordToken = createJWT(
-      user,
-      RESET_PASSWORD_TOKEN_DURATION_MINUTES
-    );
+    const resetPasswordToken =
+      await resetPasswordTokenService.createResetPasswordToken({
+        userId: user.id,
+      });
 
-    await prisma.resetPasswordToken.create({
-      data: {
-        expiresAt: addMinutes(
-          new Date(),
-          RESET_PASSWORD_TOKEN_DURATION_MINUTES
-        ),
-        token: resetPasswordToken,
-        User: {
-          connect: {
-            id: user.id,
-          },
-        },
-      },
-    });
-
-    await sendResetPasswordEmail(user.email, resetPasswordToken);
+    await sendResetPasswordEmail(user.email, resetPasswordToken.token);
 
     res.status(200).json({
       message: 'successfully send reset password email',

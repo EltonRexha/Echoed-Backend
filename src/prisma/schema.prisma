@@ -203,7 +203,7 @@ model refreshTokens {
 
 model resetPasswordToken {
   id        String   @id @default(uuid())
-  token     String   @unique
+  token     String   @unique @default(uuid())
   User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   createdAt DateTime @default(now()) @map("created_at")
@@ -216,7 +216,7 @@ model resetPasswordToken {
 model userVerificationToken {
   id        String   @id @default(uuid())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
+  token     String   @unique @default(uuid())
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   userId    String

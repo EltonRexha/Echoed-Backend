@@ -1,7 +1,14 @@
+import { Post } from '@prisma/client';
 import { prisma } from '../db/client';
 
-export default new (class {
-  async getPosts({
+interface MediaInput {
+  size: number;
+  mimetype: string;
+  cloudinaryPath: string;
+}
+
+export namespace postService {
+  export async function getPosts({
     postId,
     authorId,
     authorUsername,
@@ -46,10 +53,111 @@ export default new (class {
           },
         }),
       },
+      include: {
+        Media: true,
+      },
       skip,
       take: limit,
     });
 
     return posts;
   }
-})();
+
+  export async function getPost({ id }: { id: string }) {
+    return await prisma.post.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        Media: true,
+      },
+    });
+  }
+
+  export async function addMediaToPost({
+    id,
+    media,
+  }: {
+    id: string;
+    media: MediaInput;
+  }) {
+    const updatedPost = await prisma.post.update({
+      where: { id },
+      data: {
+        Media: {
+          create: {
+            byteSize: media.size,
+            mimeType: media.mimetype,
+            path: media.cloudinaryPath,
+          },
+        },
+      },
+    });
+
+    return updatedPost;
+  }
+
+  export async function createPost({
+    tags,
+    content,
+    userId,
+  }: {
+    tags: String[];
+    content: string;
+    userId: string;
+  }) {
+    return await prisma.$transaction(async () => {
+      const postTags = await Promise.all(
+        tags.map(async (tag) => {
+          const lowerCaseTag = tag.toLowerCase();
+          const currentTag = await prisma.postTags.upsert({
+            update: {},
+            where: {
+              name: lowerCaseTag,
+            },
+            create: {
+              name: lowerCaseTag,
+            },
+          });
+
+          return { id: currentTag.id };
+        })
+      );
+
+      return await prisma.post.create({
+        data: {
+          content,
+          author: {
+            connect: {
+              id: userId,
+            },
+          },
+          postTags: {
+            connect: postTags,
+          },
+        },
+      });
+    });
+  }
+
+  export async function likePost({
+    userId,
+    postId,
+  }: {
+    userId: string;
+    postId: string;
+  }) {
+    return await prisma.post.update({
+      where: {
+        id: postId,
+      },
+      data: {
+        likedBy: {
+          connect: {
+            id: userId,
+          },
+        },
+      },
+    });
+  }
+}
