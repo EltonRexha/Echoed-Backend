@@ -40,6 +40,8 @@ model User {
   blockedBy             User[]                  @relation(name: "blocked")
   blocks                User[]                  @relation(name: "blocked")
   postComment           postComment[]
+  likedComments         postComment[] @relation(name: "likedBy")
+  savedComments         postComment[] @relation(name: "savedBy")
 
   @@index([email])
   @@index([username])
@@ -138,6 +140,8 @@ model postComment {
   comments       postComment[] @relation(name: "comments")
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
+  likedBy        User[]        @relation(name: "likedBy")
+  savedBy        User[]        @relation(name: "savedBy")
   Media          Media[]
 
   @@map("postComments")
