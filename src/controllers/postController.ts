@@ -3,20 +3,14 @@ import createPostSchema from '../validations/createPostSchema';
 import { User } from '../types/user';
 import asyncHandler from 'express-async-handler';
 import internalError from '../errors/errorTypes/internalError';
-import { readFile } from 'fs/promises';
 import badRequestError from '../errors/errorTypes/badRequestError';
-import uploadStreamToCloudinary from '../utils/uploadStreamToCloudinary';
-import { unlink } from 'fs/promises';
 import notFoundError from '../errors/errorTypes/notFoundError';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { imageUpload, videoUpload } from '../config/multer';
 import hasPermission from '../utils/abacPermissions';
 import { User as LocalUser } from '@prisma/client';
 import forbiddenError from '../errors/errorTypes/forbiddenError';
-import commentSchema from '../validations/commentSchema';
 import getPostSchema from '../validations/getPostSchema';
 import { postService } from '../services/postService';
-import { commentService } from '../services/commentService';
 import uploadFiles from '../utils/uploadFiles';
 
 const MAX_MEDIA_UPLOAD = 3;
@@ -26,14 +20,50 @@ export const createPost = asyncHandler(async function (
   res: Response,
   next: NextFunction
 ) {
-  const user = req.user as User;
-  const { content, tags } = createPostSchema.parse(req.body);
+  const user = req.user as LocalUser;
+  const { content, tags, mainPostId } = createPostSchema.parse(req.body);
+
+  const permissionToCreatePost = await hasPermission(
+    user,
+    null,
+    'create',
+    'Posts'
+  );
+
+  if (!permissionToCreatePost) {
+    next(forbiddenError('you do not have permission to create post'));
+    return;
+  }
+
+  if (mainPostId) {
+    const mainPost = await postService.getPost({ id: mainPostId });
+
+    if (!mainPost) {
+      next(notFoundError('Main post not found'));
+      return;
+    }
+
+    const permissionToRepost = await hasPermission(
+      user,
+      mainPost,
+      'repost',
+      'Posts'
+    );
+
+    if (!permissionToRepost) {
+      next(
+        forbiddenError('you do not have permissions to repost on this post')
+      );
+      return;
+    }
+  }
 
   try {
     const post = await postService.createPost({
       tags,
       content,
       userId: user.id,
+      mainPostId,
     });
 
     res.status(200).json({
@@ -95,13 +125,13 @@ export const uploadPostImage = [
       return;
     }
 
-    const permissionToAccess = await hasPermission(
+    const permissionToUpdatePost = await hasPermission(
       req.user as LocalUser,
       post,
       'update',
       'Posts'
     );
-    if (!permissionToAccess) {
+    if (!permissionToUpdatePost) {
       next(forbiddenError("You don't have permissions to update resource"));
       return;
     }
@@ -152,13 +182,13 @@ export const uploadPostVideo = [
       return;
     }
 
-    const permissionToAccess = await hasPermission(
+    const permissionToUpdatePost = await hasPermission(
       req.user as LocalUser,
       post,
       'update',
       'Posts'
     );
-    if (!permissionToAccess) {
+    if (!permissionToUpdatePost) {
       next(forbiddenError("You don't have permissions to update resource"));
       return;
     }
@@ -199,9 +229,9 @@ export const likePost = asyncHandler(
       return;
     }
 
-    const permissionToAccess = await hasPermission(user, post, 'like', 'Posts');
+    const permissionToLike = await hasPermission(user, post, 'like', 'Posts');
 
-    if (!permissionToAccess) {
+    if (!permissionToLike) {
       next(forbiddenError("You don't have permissions to like resource"));
       return;
     }
@@ -214,7 +244,7 @@ export const likePost = asyncHandler(
   }
 );
 
-export const commentPost = asyncHandler(
+export const savePost = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const user = req.user as LocalUser;
 
@@ -227,47 +257,17 @@ export const commentPost = asyncHandler(
       return;
     }
 
-    const permissionToAccess = await hasPermission(
-      user,
-      post,
-      'comment',
-      'Posts'
-    );
+    const permissionToSave = await hasPermission(user, post, 'save', 'Posts');
 
-    if (!permissionToAccess) {
-      next(
-        forbiddenError("You don't have permissions to comment on this post")
-      );
+    if (!permissionToSave) {
+      next(forbiddenError("You don't have permissions to save resource"));
       return;
     }
 
-    const { content, parentCommentId } = commentSchema.parse(req.body);
-
-    let comment;
-
-    try {
-      comment = await commentService.createComment({
-        content,
-        postId,
-        userId: user.id,
-        parentCommentId,
-      });
-    } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          next(badRequestError('The referenced comment was not found.'));
-          return;
-        }
-      }
-
-      throw error;
-    }
+    postService.savePost({ userId: user.id, postId });
 
     res.status(200).json({
-      message: 'successfully commented on post',
-      details: {
-        commentId: comment.id,
-      },
+      message: 'Successfully saved post',
     });
   }
 );

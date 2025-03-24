@@ -2,14 +2,32 @@
  * Uses ABAC strategy to tell if a subject can access resource
  */
 
-import { Post, Roles, User } from '@prisma/client';
-import { prisma } from '../db/client';
+import { Post, postComment, Roles, User } from '@prisma/client';
 import UserIsBlocked from './UserIsBlocked';
 
 type Resources = {
   Posts: {
     resource: Post;
-    actions: 'create' | 'read' | 'update' | 'delete' | 'like' | 'comment';
+    actions:
+      | 'create'
+      | 'read'
+      | 'update'
+      | 'delete'
+      | 'like'
+      | 'save'
+      | 'comment'
+      | 'repost';
+  };
+  Comment: {
+    resource: postComment;
+    actions:
+      | 'create'
+      | 'read'
+      | 'update'
+      | 'delete'
+      | 'like'
+      | 'comment'
+      | 'save';
   };
 };
 
@@ -28,7 +46,7 @@ type permissionRoles = {
   };
 };
 
-const rolesWithPermission = {
+const rolesWithPermission: permissionRoles = {
   admin: {
     Posts: {
       like: true,
@@ -37,6 +55,17 @@ const rolesWithPermission = {
       update: true,
       delete: true,
       comment: true,
+      repost: true,
+      save: true,
+    },
+    Comment: {
+      like: true,
+      create: true,
+      read: true,
+      update: true,
+      delete: true,
+      comment: true,
+      save: true,
     },
   },
   moderator: {
@@ -47,11 +76,25 @@ const rolesWithPermission = {
       update: true,
       delete: true,
       comment: true,
+      repost: true,
+      save: true,
+    },
+    Comment: {
+      like: true,
+      create: true,
+      read: true,
+      update: true,
+      delete: true,
+      comment: true,
+      save: true,
     },
   },
   user: {
     Posts: {
       create: true,
+      save: async (user, post) => {
+        return !(await UserIsBlocked(user.id, post.userId));
+      },
       comment: async (user, post) => {
         return !(await UserIsBlocked(user.id, post.userId));
       },
@@ -61,11 +104,35 @@ const rolesWithPermission = {
       read: async (user, post) => {
         return !(await UserIsBlocked(user.id, post.userId));
       },
+      repost: async (user, post) => {
+        return !(await UserIsBlocked(user.id, post.userId));
+      },
       delete: (user, post) => user.id === post.userId,
       update: (user, post) => user.id === post.userId,
     },
+    Comment: {
+      create: true,
+      like: async (user, comment) => {
+        return !(await UserIsBlocked(user.id, comment.authorId));
+      },
+      read: async (user, comment) => {
+        return !(await UserIsBlocked(user.id, comment.authorId));
+      },
+      update: async (user, comment) => {
+        return user.id === comment.authorId;
+      },
+      delete: async (user, comment) => {
+        return user.id === comment.authorId;
+      },
+      save: async (user, comment) => {
+        return !(await UserIsBlocked(user.id, comment.authorId));
+      },
+      comment: async (user, comment) => {
+        return !(await UserIsBlocked(user.id, comment.authorId));
+      },
+    },
   },
-} satisfies permissionRoles;
+};
 
 /**
  *
@@ -80,11 +147,11 @@ const rolesWithPermission = {
  */
 async function hasPermission<resource extends keyof Resources>(
   user: User,
-  resource: Resources[resource]['resource'],
+  resource: Resources[resource]['resource'] | null,
   action: Resources[resource]['actions'],
   resourceName: resource
 ) {
-  const roles = user.Role;
+  const roles = user.Roles;
 
   const resolvedRoles = await Promise.all(
     roles.map(async (role) => {
@@ -92,6 +159,10 @@ async function hasPermission<resource extends keyof Resources>(
       const roleAction = rolesResource[action];
       if (typeof roleAction === 'boolean') {
         return roleAction;
+      }
+
+      if(!resource){
+        throw new Error('Resource must be provided in this case');
       }
 
       const canAccess = roleAction(user, resource);

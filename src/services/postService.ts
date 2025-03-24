@@ -54,12 +54,13 @@ export namespace postService {
         }),
       },
       include: {
+        MainPost: true,
         Media: true,
         postTags: {
           select: {
-            name: true
-          }
-        }
+            name: true,
+          },
+        },
       },
       skip,
       take: limit,
@@ -106,10 +107,12 @@ export namespace postService {
     tags,
     content,
     userId,
+    mainPostId,
   }: {
     tags: String[];
     content: string;
     userId: string;
+    mainPostId?: string;
   }) {
     return await prisma.$transaction(async () => {
       const postTags = await Promise.all(
@@ -140,6 +143,13 @@ export namespace postService {
           postTags: {
             connect: postTags,
           },
+          ...(mainPostId && {
+            MainPost: {
+              connect: {
+                id: mainPostId,
+              },
+            },
+          }),
         },
       });
     });
@@ -158,6 +168,27 @@ export namespace postService {
       },
       data: {
         likedBy: {
+          connect: {
+            id: userId,
+          },
+        },
+      },
+    });
+  }
+
+  export async function savePost({
+    userId,
+    postId,
+  }: {
+    userId: string;
+    postId: string;
+  }) {
+    return await prisma.post.update({
+      where: {
+        id: postId,
+      },
+      data: {
+        savedBy: {
           connect: {
             id: userId,
           },
