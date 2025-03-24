@@ -3,13 +3,12 @@
  */
 
 import { Post, Roles, User } from '@prisma/client';
-import { prisma } from '../db/client';
 import UserIsBlocked from './UserIsBlocked';
 
 type Resources = {
   Posts: {
     resource: Post;
-    actions: 'create' | 'read' | 'update' | 'delete' | 'like' | 'comment';
+    actions: 'create' | 'read' | 'update' | 'delete' | 'like' | 'comment' | 'repost';
   };
 };
 
@@ -37,6 +36,7 @@ const rolesWithPermission = {
       update: true,
       delete: true,
       comment: true,
+      repost: true,
     },
   },
   moderator: {
@@ -47,6 +47,7 @@ const rolesWithPermission = {
       update: true,
       delete: true,
       comment: true,
+      repost: true,
     },
   },
   user: {
@@ -59,6 +60,9 @@ const rolesWithPermission = {
         return !(await UserIsBlocked(user.id, post.userId));
       },
       read: async (user, post) => {
+        return !(await UserIsBlocked(user.id, post.userId));
+      },
+      repost: async (user, post) => {
         return !(await UserIsBlocked(user.id, post.userId));
       },
       delete: (user, post) => user.id === post.userId,

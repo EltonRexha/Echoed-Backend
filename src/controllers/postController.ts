@@ -26,14 +26,31 @@ export const createPost = asyncHandler(async function (
   res: Response,
   next: NextFunction
 ) {
-  const user = req.user as User;
-  const { content, tags } = createPostSchema.parse(req.body);
+  const user = req.user as LocalUser;
+  const { content, tags, mainPostId } = createPostSchema.parse(req.body);
+
+  if(mainPostId){
+    const mainPost = await postService.getPost({id: mainPostId});
+
+    if(!mainPost){
+      next(notFoundError('Main post not found'));
+      return;
+    }
+
+    const canRepost = await hasPermission(user, mainPost, 'repost', 'Posts');
+
+    if(!canRepost){
+      next(forbiddenError('you do not have permissions to repost on this post'));
+      return;
+    }
+  }
 
   try {
     const post = await postService.createPost({
       tags,
       content,
       userId: user.id,
+      mainPostId,
     });
 
     res.status(200).json({

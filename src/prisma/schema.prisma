@@ -133,7 +133,7 @@ model postComment {
   post           Post          @relation(fields: [post_id], references: [id])
   post_id        String        @map("postsId")
   content        String
-  parentComment  postComment?  @relation(fields: [postCommentsId], references: [id], name: "comments")
+  parentComment  postComment?  @relation(fields: [postCommentsId], references: [id], name: "comments", onDelete: Cascade)
   postCommentsId String?
   comments       postComment[] @relation(name: "comments")
   createdAt      DateTime      @default(now()) @map("created_at")
