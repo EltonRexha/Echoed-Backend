@@ -14,6 +14,7 @@ type Resources = {
       | 'update'
       | 'delete'
       | 'like'
+      | 'save'
       | 'comment'
       | 'repost';
   };
@@ -55,6 +56,7 @@ const rolesWithPermission: permissionRoles = {
       delete: true,
       comment: true,
       repost: true,
+      save: true,
     },
     Comment: {
       like: true,
@@ -75,6 +77,7 @@ const rolesWithPermission: permissionRoles = {
       delete: true,
       comment: true,
       repost: true,
+      save: true,
     },
     Comment: {
       like: true,
@@ -89,6 +92,9 @@ const rolesWithPermission: permissionRoles = {
   user: {
     Posts: {
       create: true,
+      save: async (user, post) => {
+        return !(await UserIsBlocked(user.id, post.userId));
+      },
       comment: async (user, post) => {
         return !(await UserIsBlocked(user.id, post.userId));
       },
@@ -126,7 +132,7 @@ const rolesWithPermission: permissionRoles = {
       },
     },
   },
-}
+};
 
 /**
  *
@@ -141,7 +147,7 @@ const rolesWithPermission: permissionRoles = {
  */
 async function hasPermission<resource extends keyof Resources>(
   user: User,
-  resource: Resources[resource]['resource'],
+  resource: Resources[resource]['resource'] | null,
   action: Resources[resource]['actions'],
   resourceName: resource
 ) {
@@ -153,6 +159,10 @@ async function hasPermission<resource extends keyof Resources>(
       const roleAction = rolesResource[action];
       if (typeof roleAction === 'boolean') {
         return roleAction;
+      }
+
+      if(!resource){
+        throw new Error('Resource must be provided in this case');
       }
 
       const canAccess = roleAction(user, resource);

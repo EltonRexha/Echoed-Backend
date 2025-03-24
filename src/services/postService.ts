@@ -175,4 +175,25 @@ export namespace postService {
       },
     });
   }
+
+  export async function savePost({
+    userId,
+    postId,
+  }: {
+    userId: string;
+    postId: string;
+  }) {
+    return await prisma.post.update({
+      where: {
+        id: postId,
+      },
+      data: {
+        savedBy: {
+          connect: {
+            id: userId,
+          },
+        },
+      },
+    });
+  }
 }

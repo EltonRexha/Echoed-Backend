@@ -4,6 +4,7 @@ import {
   createPost,
   getPost,
   likePost,
+  savePost,
   uploadPostImage,
   uploadPostVideo,
 } from '../controllers/postController';
@@ -16,6 +17,7 @@ router.get('/', getPost);
 router.post('/:postId/images', localUserAuthenticated, uploadPostImage);
 router.post('/:postId/videos', localUserAuthenticated, uploadPostVideo);
 router.post('/:postId/like', localUserAuthenticated, likePost);
+router.post('/:postId/save', localUserAuthenticated, savePost);
 router.post('/:postId/comment', localUserAuthenticated, commentPost);
 router.post('/comment/:commentId/like', localUserAuthenticated, likeComment);
 router.post('/comment/:commentId/save', localUserAuthenticated, saveComment);

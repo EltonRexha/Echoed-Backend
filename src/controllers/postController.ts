@@ -23,18 +23,37 @@ export const createPost = asyncHandler(async function (
   const user = req.user as LocalUser;
   const { content, tags, mainPostId } = createPostSchema.parse(req.body);
 
-  if(mainPostId){
-    const mainPost = await postService.getPost({id: mainPostId});
+  const permissionToCreatePost = await hasPermission(
+    user,
+    null,
+    'create',
+    'Posts'
+  );
 
-    if(!mainPost){
+  if (!permissionToCreatePost) {
+    next(forbiddenError('you do not have permission to create post'));
+    return;
+  }
+
+  if (mainPostId) {
+    const mainPost = await postService.getPost({ id: mainPostId });
+
+    if (!mainPost) {
       next(notFoundError('Main post not found'));
       return;
     }
 
-    const canRepost = await hasPermission(user, mainPost, 'repost', 'Posts');
+    const permissionToRepost = await hasPermission(
+      user,
+      mainPost,
+      'repost',
+      'Posts'
+    );
 
-    if(!canRepost){
-      next(forbiddenError('you do not have permissions to repost on this post'));
+    if (!permissionToRepost) {
+      next(
+        forbiddenError('you do not have permissions to repost on this post')
+      );
       return;
     }
   }
@@ -106,13 +125,13 @@ export const uploadPostImage = [
       return;
     }
 
-    const permissionToAccess = await hasPermission(
+    const permissionToUpdatePost = await hasPermission(
       req.user as LocalUser,
       post,
       'update',
       'Posts'
     );
-    if (!permissionToAccess) {
+    if (!permissionToUpdatePost) {
       next(forbiddenError("You don't have permissions to update resource"));
       return;
     }
@@ -163,13 +182,13 @@ export const uploadPostVideo = [
       return;
     }
 
-    const permissionToAccess = await hasPermission(
+    const permissionToUpdatePost = await hasPermission(
       req.user as LocalUser,
       post,
       'update',
       'Posts'
     );
-    if (!permissionToAccess) {
+    if (!permissionToUpdatePost) {
       next(forbiddenError("You don't have permissions to update resource"));
       return;
     }
@@ -210,9 +229,9 @@ export const likePost = asyncHandler(
       return;
     }
 
-    const permissionToAccess = await hasPermission(user, post, 'like', 'Posts');
+    const permissionToLike = await hasPermission(user, post, 'like', 'Posts');
 
-    if (!permissionToAccess) {
+    if (!permissionToLike) {
       next(forbiddenError("You don't have permissions to like resource"));
       return;
     }
@@ -225,4 +244,30 @@ export const likePost = asyncHandler(
   }
 );
 
+export const savePost = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user as LocalUser;
 
+    const { postId } = req.params;
+
+    const post = await postService.getPost({ id: postId });
+
+    if (!post) {
+      next(notFoundError('Post not found'));
+      return;
+    }
+
+    const permissionToSave = await hasPermission(user, post, 'save', 'Posts');
+
+    if (!permissionToSave) {
+      next(forbiddenError("You don't have permissions to save resource"));
+      return;
+    }
+
+    postService.savePost({ userId: user.id, postId });
+
+    res.status(200).json({
+      message: 'Successfully saved post',
+    });
+  }
+);

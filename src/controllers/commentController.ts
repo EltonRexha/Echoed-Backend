@@ -23,14 +23,13 @@ export const commentPost = asyncHandler(
       return;
     }
 
-    const canCommentOnPost = await hasPermission(
-      user,
-      post,
-      'comment',
-      'Posts'
-    );
+    const [permissionToCommentOnPost, permissionToCreateComment] =
+      await Promise.all([
+        hasPermission(user, post, 'comment', 'Posts'),
+        hasPermission(user, null, 'create', 'Comment'),
+      ]);
 
-    if (!canCommentOnPost) {
+    if (!permissionToCommentOnPost || !permissionToCreateComment) {
       next(
         forbiddenError("You don't have permissions to comment on this post")
       );
@@ -52,14 +51,14 @@ export const commentPost = asyncHandler(
         return;
       }
 
-      const canCommentOnComment = await hasPermission(
+      const permissionToCommentOnComment = await hasPermission(
         user,
         parentComment,
         'comment',
         'Comment'
       );
 
-      if (!canCommentOnComment) {
+      if (!permissionToCommentOnComment) {
         next(forbiddenError('You cannot comment on this parent comment'));
         return;
       }
@@ -104,13 +103,13 @@ export const likeComment = asyncHandler(
       return;
     }
 
-    const canLikeComment = await hasPermission(
+    const permissionToLikeComment = await hasPermission(
       user,
       comment,
       'like',
       'Comment'
     );
-    if (!canLikeComment) {
+    if (!permissionToLikeComment) {
       next(forbiddenError('You do not have permission to like this comment'));
       return;
     }
@@ -138,13 +137,13 @@ export const saveComment = asyncHandler(
       return;
     }
 
-    const canSaveComment = await hasPermission(
+    const permissionToSaveComment = await hasPermission(
       user,
       comment,
       'save',
       'Comment'
     );
-    if (!canSaveComment) {
+    if (!permissionToSaveComment) {
       next(forbiddenError('You do not have permission to save this comment'));
       return;
     }
@@ -152,11 +151,10 @@ export const saveComment = asyncHandler(
     await commentService.saveComment({ commentId, userId: user.id });
 
     res.status(200).json({
-      message: 'successfully liked comment',
+      message: 'successfully saved comment',
       details: {
         commentId,
       },
     });
   }
 );
-
