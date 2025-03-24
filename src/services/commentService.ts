@@ -54,4 +54,65 @@ export namespace commentService {
 
     return comment;
   }
+
+  export async function getComment({
+    commentId,
+    postId,
+  }: {
+    commentId: string;
+    postId?: string;
+  }) {
+    return await prisma.postComment.findUnique({
+      where: {
+        id: commentId,
+        ...(postId && {
+          post: {
+            id: postId,
+          },
+        }),
+      },
+    });
+  }
+
+  export async function likeComment({
+    commentId,
+    userId,
+  }: {
+    commentId: string;
+    userId: string;
+  }) {
+    return await prisma.postComment.update({
+      where: {
+        id: commentId,
+      },
+      data: {
+        likedBy: {
+          connect: {
+            id: userId,
+          },
+        },
+      },
+    });
+  }
+
+  export async function saveComment({
+    commentId,
+    userId,
+  }: {
+    commentId: string;
+    userId: string;
+  }) {
+    return await prisma.postComment.update({
+      where: {
+        id: commentId,
+      },
+      data: {
+        savedBy: {
+          connect: {
+            id: userId,
+          },
+        },
+      },
+    });
+  }
 }

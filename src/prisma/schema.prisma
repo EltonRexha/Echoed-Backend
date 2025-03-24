@@ -36,7 +36,7 @@ model User {
   githubUser            GithubUser?
   UserType              UserType                @default(local)
   resetPasswordToken    resetPasswordToken[]
-  Role                  Roles[]                 @default([user])
+  Roles                  Roles[]                 @default([user])
   blockedBy             User[]                  @relation(name: "blocked")
   blocks                User[]                  @relation(name: "blocked")
   postComment           postComment[]

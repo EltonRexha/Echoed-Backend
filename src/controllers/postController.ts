@@ -3,20 +3,14 @@ import createPostSchema from '../validations/createPostSchema';
 import { User } from '../types/user';
 import asyncHandler from 'express-async-handler';
 import internalError from '../errors/errorTypes/internalError';
-import { readFile } from 'fs/promises';
 import badRequestError from '../errors/errorTypes/badRequestError';
-import uploadStreamToCloudinary from '../utils/uploadStreamToCloudinary';
-import { unlink } from 'fs/promises';
 import notFoundError from '../errors/errorTypes/notFoundError';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { imageUpload, videoUpload } from '../config/multer';
 import hasPermission from '../utils/abacPermissions';
 import { User as LocalUser } from '@prisma/client';
 import forbiddenError from '../errors/errorTypes/forbiddenError';
-import commentSchema from '../validations/commentSchema';
 import getPostSchema from '../validations/getPostSchema';
 import { postService } from '../services/postService';
-import { commentService } from '../services/commentService';
 import uploadFiles from '../utils/uploadFiles';
 
 const MAX_MEDIA_UPLOAD = 3;
@@ -231,60 +225,4 @@ export const likePost = asyncHandler(
   }
 );
 
-export const commentPost = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const user = req.user as LocalUser;
 
-    const { postId } = req.params;
-
-    const post = await postService.getPost({ id: postId });
-
-    if (!post) {
-      next(notFoundError('Post not found'));
-      return;
-    }
-
-    const permissionToAccess = await hasPermission(
-      user,
-      post,
-      'comment',
-      'Posts'
-    );
-
-    if (!permissionToAccess) {
-      next(
-        forbiddenError("You don't have permissions to comment on this post")
-      );
-      return;
-    }
-
-    const { content, parentCommentId } = commentSchema.parse(req.body);
-
-    let comment;
-
-    try {
-      comment = await commentService.createComment({
-        content,
-        postId,
-        userId: user.id,
-        parentCommentId,
-      });
-    } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          next(badRequestError('The referenced comment was not found.'));
-          return;
-        }
-      }
-
-      throw error;
-    }
-
-    res.status(200).json({
-      message: 'successfully commented on post',
-      details: {
-        commentId: comment.id,
-      },
-    });
-  }
-);
