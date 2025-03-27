@@ -29,24 +29,16 @@ async function uploadItem({
         resourceType = 'raw'; // Handle audio files as raw
       }
 
-      try {
-        await uploadCb(file, fileName);
+      await uploadCb(file, fileName);
 
-        const storedFile = await readFile(filePath);
-        await uploadStreamToCloudinary(storedFile, {
-          folder: cloudinaryPath,
-          public_id: `file_${Date.now()}`,
-          resource_type: resourceType,
-        });
-      } catch (e) {
-        if (e instanceof PrismaClientKnownRequestError) {
-          throw notFoundError('Post not found');
-        } else {
-          throw e;
-        }
-      } finally {
-        await unlink(filePath);
-      }
+      const storedFile = await readFile(filePath);
+      await uploadStreamToCloudinary(storedFile, {
+        folder: cloudinaryPath,
+        public_id: `file_${Date.now()}`,
+        resource_type: resourceType,
+      });
+
+      await unlink(filePath);
     })
   );
 }
@@ -67,14 +59,20 @@ export namespace uploadFiles {
       cloudinaryPath,
       files,
       uploadCb: async (file, fileName) => {
-        await postService.addMediaToPost({
-          id: postId,
-          media: {
-            size: file.size,
-            mimetype: file.mimetype,
-            cloudinaryPath: path.join(cloudinaryPath, fileName),
-          },
-        });
+        try {
+          await postService.addMediaToPost({
+            id: postId,
+            media: {
+              size: file.size,
+              mimetype: file.mimetype,
+              cloudinaryPath: path.join(cloudinaryPath, fileName),
+            },
+          });
+        } catch (e) {
+          if (e instanceof PrismaClientKnownRequestError) {
+            throw notFoundError('Post not found');
+          }
+        }
       },
     });
   }
@@ -94,14 +92,20 @@ export namespace uploadFiles {
       cloudinaryPath,
       files,
       uploadCb: async (file, fileName) => {
-        await commentService.addMediaToComment({
-          id: commentId,
-          media: {
-            size: file.size,
-            mimetype: file.mimetype,
-            cloudinaryPath: path.join(cloudinaryPath, fileName),
-          },
-        });
+        try {
+          await commentService.addMediaToComment({
+            id: commentId,
+            media: {
+              size: file.size,
+              mimetype: file.mimetype,
+              cloudinaryPath: path.join(cloudinaryPath, fileName),
+            },
+          });
+        } catch (e) {
+          if (e instanceof PrismaClientKnownRequestError) {
+            throw notFoundError('Comment not found');
+          }
+        }
       },
     });
   }
