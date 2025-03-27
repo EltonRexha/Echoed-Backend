@@ -13,6 +13,8 @@ import {
   likeComment,
   saveComment,
   getComments,
+  uploadCommentImage,
+  uploadCommentVideos,
 } from '../controllers/commentController';
 
 const router = Router();
@@ -27,5 +29,15 @@ router.post('/:postId/save', localUserAuthenticated, savePost);
 router.post('/:postId/comments', localUserAuthenticated, postComment);
 router.post('/comments/:commentId/like', localUserAuthenticated, likeComment);
 router.post('/comments/:commentId/save', localUserAuthenticated, saveComment);
+router.post(
+  '/comments/:commentId/images',
+  localUserAuthenticated,
+  uploadCommentImage
+);
+router.post(
+  '/comments/:commentId/videos',
+  localUserAuthenticated,
+  uploadCommentVideos
+);
 
 export default router;

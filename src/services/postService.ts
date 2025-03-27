@@ -1,11 +1,5 @@
-import { Post } from '@prisma/client';
 import { prisma } from '../db/client';
-
-interface MediaInput {
-  size: number;
-  mimetype: string;
-  cloudinaryPath: string;
-}
+import MediaInput from '../types/mediaInput';
 
 export namespace postService {
   export async function getPosts({

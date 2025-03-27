@@ -1,4 +1,5 @@
 import { prisma } from '../db/client';
+import MediaInput from '../types/mediaInput';
 
 export namespace commentService {
   export async function getComments({
@@ -136,6 +137,9 @@ export namespace commentService {
           },
         }),
       },
+      include: {
+        Media: true,
+      },
     });
   }
 
@@ -180,4 +184,28 @@ export namespace commentService {
       },
     });
   }
+
+  export async function addMediaToComment({
+      id,
+      media,
+    }: {
+      id: string;
+      media: MediaInput;
+    }) {
+      const updatedComment = await prisma.postComment.update({
+        where: { id },
+        data: {
+          Media: {
+            create: {
+              byteSize: media.size,
+              mimeType: media.mimetype,
+              path: media.cloudinaryPath,
+            },
+          },
+        },
+      });
+  
+      return updatedComment;
+    }
+  
 }

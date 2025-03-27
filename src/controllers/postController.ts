@@ -11,7 +11,7 @@ import { User as LocalUser } from '@prisma/client';
 import forbiddenError from '../errors/errorTypes/forbiddenError';
 import getPostSchema from '../validations/getPostSchema';
 import { postService } from '../services/postService';
-import uploadFiles from '../utils/uploadFiles';
+import { uploadFiles } from '../utils/uploadFiles';
 
 const MAX_MEDIA_UPLOAD = 3;
 
@@ -152,7 +152,7 @@ export const uploadPostImage = [
 
     const files = req.files as Express.Multer.File[];
 
-    await uploadFiles({ files, postId, userId: user.id });
+    await uploadFiles.post({ files, postId, userId: user.id });
 
     res.status(200).json({
       message: 'successfully uploaded image',
@@ -209,7 +209,7 @@ export const uploadPostVideo = [
 
     const files = req.files as Express.Multer.File[];
 
-    await uploadFiles({ files, postId, userId: user.id });
+    await uploadFiles.post({ files, postId, userId: user.id });
 
     res.status(200).json({
       message: 'successfully uploaded video',

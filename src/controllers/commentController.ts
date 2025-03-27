@@ -10,6 +10,10 @@ import commentSchema from '../validations/commentSchema';
 import { commentService } from '../services/commentService';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import getCommentsSchema from '../validations/getCommentsSchema';
+import { imageUpload, videoUpload } from '../config/multer';
+import { uploadFiles } from '../utils/uploadFiles';
+
+const MAX_MEDIA_UPLOAD = 1;
 
 export const postComment = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -192,3 +196,118 @@ export const getComments = asyncHandler(async (req: Request, res: Response) => {
     page,
   });
 });
+
+export const uploadCommentImage = [
+  imageUpload.array('images', MAX_MEDIA_UPLOAD),
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user as LocalUser;
+    if (!req.files && !Array.isArray(req.files)) {
+      next(badRequestError('No files provided'));
+      return;
+    }
+
+    const { commentId } = req.params;
+
+    if (!commentId) {
+      next(badRequestError('Comment is required'));
+      return;
+    }
+
+    const comment = await commentService.getComment({ commentId });
+
+    if (!comment) {
+      next(notFoundError('Comment not found'));
+      return;
+    }
+
+    const permissionToUpdatePost = await hasPermission(
+      req.user as LocalUser,
+      comment,
+      'update',
+      'Comment'
+    );
+    if (!permissionToUpdatePost) {
+      next(forbiddenError("You don't have permissions to update resource"));
+      return;
+    }
+
+    if (
+      comment?.Media &&
+      comment.Media.length + (req.files.length as number) > MAX_MEDIA_UPLOAD
+    ) {
+      next(
+        badRequestError(
+          'Maximum amount of resources uploaded to post exceeded',
+          'MAX_MEDIA'
+        )
+      );
+      return;
+    }
+
+    const files = req.files as Express.Multer.File[];
+
+    await uploadFiles.comment({ files, commentId: commentId, userId: user.id });
+
+    res.status(200).json({
+      message: 'successfully uploaded image',
+    });
+  }),
+];
+
+
+export const uploadCommentVideos = [
+  videoUpload.array('videos', MAX_MEDIA_UPLOAD),
+  asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const user = req.user as LocalUser;
+    if (!req.files && !Array.isArray(req.files)) {
+      next(badRequestError('No files provided'));
+      return;
+    }
+
+    const { commentId } = req.params;
+
+    if (!commentId) {
+      next(badRequestError('Comment is required'));
+      return;
+    }
+
+    const comment = await commentService.getComment({ commentId });
+
+    if (!comment) {
+      next(notFoundError('Comment not found'));
+      return;
+    }
+
+    const permissionToUpdatePost = await hasPermission(
+      req.user as LocalUser,
+      comment,
+      'update',
+      'Comment'
+    );
+    if (!permissionToUpdatePost) {
+      next(forbiddenError("You don't have permissions to update resource"));
+      return;
+    }
+
+    if (
+      comment?.Media &&
+      comment.Media.length + (req.files.length as number) > MAX_MEDIA_UPLOAD
+    ) {
+      next(
+        badRequestError(
+          'Maximum amount of resources uploaded to post exceeded',
+          'MAX_MEDIA'
+        )
+      );
+      return;
+    }
+
+    const files = req.files as Express.Multer.File[];
+
+    await uploadFiles.comment({ files, commentId: commentId, userId: user.id });
+
+    res.status(200).json({
+      message: 'successfully uploaded video',
+    });
+  }),
+];
