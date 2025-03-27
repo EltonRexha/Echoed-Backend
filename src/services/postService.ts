@@ -200,4 +200,12 @@ export namespace postService {
       },
     });
   }
+
+  export async function deletePost({ postId }: { postId: string }) {
+    return await prisma.post.delete({
+      where: {
+        id: postId,
+      },  
+    });
+  }
 }

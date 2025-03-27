@@ -103,6 +103,45 @@ export const getPost = asyncHandler(async function (
   });
 });
 
+export const deletePost = asyncHandler(async function (
+  req: Request,
+  res: Response
+) {
+  const { postId } = req.params;
+  const user = req.user as LocalUser;
+
+  if (!postId) {
+    res.status(400).json({
+      message: 'Post is required',
+    });
+    return;
+  }
+
+  const post = await postService.getPost({ id: postId });
+
+  if (!post) {
+    res.status(404).json({
+      message: 'Post not found',
+    });
+    return;
+  }
+
+  const permissionToDelete = hasPermission(user, post, 'delete', 'Posts');
+
+  if (!permissionToDelete) {
+    res.status(403).json({
+      message: "You don't have permissions to delete resource",
+    });
+    return;
+  }
+
+  await postService.deletePost({ postId });
+
+  res.status(200).json({
+    message: 'Successfully deleted post',
+  });
+});
+
 export const uploadPostImage = [
   imageUpload.array('images', MAX_MEDIA_UPLOAD),
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {

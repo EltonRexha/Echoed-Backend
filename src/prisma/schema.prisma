@@ -132,7 +132,7 @@ model postComment {
   id              String        @id @default(uuid())
   author          User          @relation(fields: [authorId], references: [id])
   authorId        String
-  post            Post          @relation(fields: [post_id], references: [id])
+  post            Post          @relation(fields: [post_id], references: [id], onDelete: Cascade)
   post_id         String        @map("postsId")
   content         String
   parentComment   postComment?  @relation(fields: [parentCommentId], references: [id], name: "comments", onDelete: Cascade)
