@@ -85,7 +85,7 @@ export const getPost = asyncHandler(async function (
   const data = getPostSchema.parse(query);
   const page = data.page ? parseInt(data.page) : 1;
   const limit = data.limit ? parseInt(data.limit) : 10;
-  const posts = await postService.getPosts({
+  const foundPost = await postService.getPosts({
     postId: data.id,
     authorId: data.authorId,
     authorEmail: data.authorEmail,
@@ -96,8 +96,9 @@ export const getPost = asyncHandler(async function (
     page: page,
   });
 
-  res.json({
-    posts,
+  res.status(200).json({
+    posts: foundPost.posts,
+    pageCount: foundPost.pageCount,
     page,
   });
 });

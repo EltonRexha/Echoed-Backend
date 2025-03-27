@@ -9,8 +9,9 @@ import { postService } from '../services/postService';
 import commentSchema from '../validations/commentSchema';
 import { commentService } from '../services/commentService';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import getCommentsSchema from '../validations/getCommentsSchema';
 
-export const commentPost = asyncHandler(
+export const postComment = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const user = req.user as LocalUser;
 
@@ -158,3 +159,36 @@ export const saveComment = asyncHandler(
     });
   }
 );
+
+export const getComments = asyncHandler(async (req: Request, res: Response) => {
+  const query = req.query;
+  const {
+    authorEmail,
+    authorId,
+    authorUsername,
+    id,
+    parentCommentId,
+    likedByUserId,
+    savedByUserId,
+    limit,
+    page,
+  } = getCommentsSchema.parse(query);
+
+  const foundComments = await commentService.getComments({
+    authorEmail,
+    authorId,
+    authorUsername,
+    parentCommentId,
+    commentId: id,
+    likedByUserId,
+    savedByUserId,
+    limit: limit ? parseInt(limit) : 10,
+    page: page ? parseInt(page) : 1,
+  });
+
+  res.status(200).json({
+    comments: foundComments.comments,
+    pageCount: foundComments.pageCount,
+    page,
+  });
+});

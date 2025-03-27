@@ -1,6 +1,71 @@
 import { prisma } from '../db/client';
 
 export namespace commentService {
+  export async function getComments({
+    commentId,
+    authorId,
+    authorUsername,
+    authorEmail,
+    likedByUserId,
+    savedByUserId,
+    parentCommentId,
+    page = 1,
+    limit = 10,
+  }: {
+    commentId?: string;
+    authorId?: string;
+    authorUsername?: string;
+    authorEmail?: string;
+    likedByUserId?: string;
+    savedByUserId?: string;
+    parentCommentId?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const skip = (page - 1) * limit;
+    const comments = await prisma.postComment.findMany({
+      where: {
+        ...(commentId && { id: commentId }),
+        ...((authorId || authorEmail || authorUsername) && {
+          author: {
+            id: authorId,
+            email: authorEmail,
+            username: authorUsername,
+          },
+        }),
+        ...(likedByUserId && {
+          likedBy: {
+            some: {
+              id: likedByUserId,
+            },
+          },
+        }),
+        ...(savedByUserId && {
+          savedBy: {
+            some: {
+              id: savedByUserId,
+            },
+          },
+        }),
+
+        ...(parentCommentId && {
+          parentComment: {
+            id: parentCommentId,
+          },
+        }),
+      },
+      include: {
+        Media: true,
+      },
+      skip,
+      take: limit,
+    });
+
+    const pageCount = comments.length / limit;
+
+    return { comments, pageCount };
+  }
+
   export async function createComment({
     content,
     postId,
