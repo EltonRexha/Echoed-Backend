@@ -2,6 +2,7 @@ import { Router } from 'express';
 import localUserAuthenticated from '../middlewares/localUserAuthenticated';
 import {
   createPost,
+  deletePost,
   getPost,
   likePost,
   savePost,
@@ -21,6 +22,7 @@ const router = Router();
 
 router.post('/', localUserAuthenticated, createPost);
 router.get('/', getPost);
+router.delete('/:postId', localUserAuthenticated, deletePost);
 router.get('/comments', getComments);
 router.post('/:postId/images', localUserAuthenticated, uploadPostImage);
 router.post('/:postId/videos', localUserAuthenticated, uploadPostVideo);
