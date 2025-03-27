@@ -197,6 +197,45 @@ export const getComments = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
+export const deleteComment = asyncHandler(async function (
+  req: Request,
+  res: Response
+) {
+  const { commentId } = req.params;
+  const user = req.user as LocalUser;
+
+  if (!commentId) {
+    res.status(400).json({
+      message: 'Comment is required',
+    });
+    return;
+  }
+
+  const comment = await commentService.getComment({ commentId });
+
+  if (!comment) {
+    res.status(404).json({
+      message: 'Comment not found',
+    });
+    return;
+  }
+
+  const permissionToDelete = hasPermission(user, comment, 'delete', 'Comment');
+
+  if (!permissionToDelete) {
+    res.status(403).json({
+      message: "You don't have permissions to delete resource",
+    });
+    return;
+  }
+
+  await commentService.deleteComment({ commentId });
+
+  res.status(200).json({
+    message: 'Successfully deleted comment',
+  });
+});
+
 export const uploadCommentImage = [
   imageUpload.array('images', MAX_MEDIA_UPLOAD),
   asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
@@ -253,7 +292,6 @@ export const uploadCommentImage = [
     });
   }),
 ];
-
 
 export const uploadCommentVideos = [
   videoUpload.array('videos', MAX_MEDIA_UPLOAD),

@@ -186,26 +186,33 @@ export namespace commentService {
   }
 
   export async function addMediaToComment({
-      id,
-      media,
-    }: {
-      id: string;
-      media: MediaInput;
-    }) {
-      const updatedComment = await prisma.postComment.update({
-        where: { id },
-        data: {
-          Media: {
-            create: {
-              byteSize: media.size,
-              mimeType: media.mimetype,
-              path: media.cloudinaryPath,
-            },
+    id,
+    media,
+  }: {
+    id: string;
+    media: MediaInput;
+  }) {
+    const updatedComment = await prisma.postComment.update({
+      where: { id },
+      data: {
+        Media: {
+          create: {
+            byteSize: media.size,
+            mimeType: media.mimetype,
+            path: media.cloudinaryPath,
           },
         },
-      });
-  
-      return updatedComment;
-    }
-  
+      },
+    });
+
+    return updatedComment;
+  }
+
+  export async function deleteComment({ commentId }: { commentId: string }) {
+    return await prisma.postComment.delete({
+      where: {
+        id: commentId,
+      },
+    });
+  }
 }
