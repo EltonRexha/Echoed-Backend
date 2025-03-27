@@ -16,6 +16,7 @@ import {
   getComments,
   uploadCommentImage,
   uploadCommentVideos,
+  deleteComment,
 } from '../controllers/commentController';
 
 const router = Router();
@@ -23,6 +24,7 @@ const router = Router();
 router.post('/', localUserAuthenticated, createPost);
 router.get('/', getPost);
 router.delete('/:postId', localUserAuthenticated, deletePost);
+router.delete('/comments/:commentId', localUserAuthenticated, deleteComment);
 router.get('/comments', getComments);
 router.post('/:postId/images', localUserAuthenticated, uploadPostImage);
 router.post('/:postId/videos', localUserAuthenticated, uploadPostVideo);
