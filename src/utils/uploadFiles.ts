@@ -4,21 +4,23 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import { unlink, readFile } from 'fs/promises';
 import path from 'path';
+import { commentService } from '../services/commentService';
 
-export default async function ({
+async function uploadItem({
   files,
-  postId,
-  userId,
+  cloudinaryPath,
+  uploadCb,
 }: {
   files: Express.Multer.File[];
-  postId: string;
-  userId: string;
+  cloudinaryPath: string;
+  uploadCb: (file: Express.Multer.File, fileName: string) => unknown;
 }) {
   await Promise.all(
     files.map(async (file) => {
       const filePath = file.path;
-      const fileName = `/file_${Date.now()}${path.extname(file.originalname).toLowerCase()}`;
-      const cloudinaryPath = `uploads/users/${userId}/posts/${postId}/videos/`;
+      const fileName = `/file_${Date.now()}${path
+        .extname(file.originalname)
+        .toLowerCase()}`;
 
       let resourceType: 'image' | 'video' | 'raw' = 'image'; // Default to image
       if (file.mimetype.includes('video')) {
@@ -28,20 +30,13 @@ export default async function ({
       }
 
       try {
-        await postService.addMediaToPost({
-          id: postId,
-          media: {
-            size: file.size,
-            mimetype: file.mimetype,
-            cloudinaryPath: path.join(cloudinaryPath, fileName),
-          },
-        });
+        await uploadCb(file, fileName);
 
         const storedFile = await readFile(filePath);
         await uploadStreamToCloudinary(storedFile, {
           folder: cloudinaryPath,
           public_id: `file_${Date.now()}`,
-          resource_type: resourceType
+          resource_type: resourceType,
         });
       } catch (e) {
         if (e instanceof PrismaClientKnownRequestError) {
@@ -54,4 +49,60 @@ export default async function ({
       }
     })
   );
+}
+
+export namespace uploadFiles {
+  export async function post({
+    files,
+    postId,
+    userId,
+  }: {
+    files: Express.Multer.File[];
+    postId: string;
+    userId: string;
+  }) {
+    const cloudinaryPath = `uploads/users/${userId}/posts/${postId}/media/`;
+
+    return uploadItem({
+      cloudinaryPath,
+      files,
+      uploadCb: async (file, fileName) => {
+        await postService.addMediaToPost({
+          id: postId,
+          media: {
+            size: file.size,
+            mimetype: file.mimetype,
+            cloudinaryPath: path.join(cloudinaryPath, fileName),
+          },
+        });
+      },
+    });
+  }
+
+  export async function comment({
+    files,
+    commentId,
+    userId,
+  }: {
+    files: Express.Multer.File[];
+    commentId: string;
+    userId: string;
+  }) {
+    const cloudinaryPath = `uploads/users/${userId}/comments/${commentId}/media/`;
+
+    return uploadItem({
+      cloudinaryPath,
+      files,
+      uploadCb: async (file, fileName) => {
+        await commentService.addMediaToComment({
+          id: commentId,
+          media: {
+            size: file.size,
+            mimetype: file.mimetype,
+            cloudinaryPath: path.join(cloudinaryPath, fileName),
+          },
+        });
+      },
+    });
+  }
 }

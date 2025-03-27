@@ -1,11 +1,5 @@
-import { Post } from '@prisma/client';
 import { prisma } from '../db/client';
-
-interface MediaInput {
-  size: number;
-  mimetype: string;
-  cloudinaryPath: string;
-}
+import MediaInput from '../types/mediaInput';
 
 export namespace postService {
   export async function getPosts({
@@ -15,6 +9,7 @@ export namespace postService {
     authorEmail,
     likedByUserId,
     savedByUserId,
+    parentPostId,
     page = 1,
     limit = 10,
   }: {
@@ -24,6 +19,7 @@ export namespace postService {
     authorEmail?: string;
     likedByUserId?: string;
     savedByUserId?: string;
+    parentPostId?: string;
     page?: number;
     limit?: number;
   }) {
@@ -52,6 +48,12 @@ export namespace postService {
             },
           },
         }),
+
+        ...(parentPostId && {
+          MainPost: {
+            id: parentPostId,
+          },
+        }),
       },
       include: {
         MainPost: true,
@@ -66,7 +68,9 @@ export namespace postService {
       take: limit,
     });
 
-    return posts;
+    const pageCount = posts.length / limit;
+
+    return { posts, pageCount };
   }
 
   export async function getPost({ id }: { id: string }) {

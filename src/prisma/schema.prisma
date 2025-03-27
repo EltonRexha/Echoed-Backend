@@ -36,12 +36,12 @@ model User {
   githubUser            GithubUser?
   UserType              UserType                @default(local)
   resetPasswordToken    resetPasswordToken[]
-  Roles                  Roles[]                 @default([user])
+  Roles                 Roles[]                 @default([user])
   blockedBy             User[]                  @relation(name: "blocked")
   blocks                User[]                  @relation(name: "blocked")
   postComment           postComment[]
-  likedComments         postComment[] @relation(name: "likedBy")
-  savedComments         postComment[] @relation(name: "savedBy")
+  likedComments         postComment[]           @relation(name: "likedBy")
+  savedComments         postComment[]           @relation(name: "savedBy")
 
   @@index([email])
   @@index([username])
@@ -129,20 +129,20 @@ model postTags {
 }
 
 model postComment {
-  id             String        @id @default(uuid())
-  author         User          @relation(fields: [authorId], references: [id])
-  authorId       String
-  post           Post          @relation(fields: [post_id], references: [id])
-  post_id        String        @map("postsId")
-  content        String
-  parentComment  postComment?  @relation(fields: [postCommentsId], references: [id], name: "comments", onDelete: Cascade)
-  postCommentsId String?
-  comments       postComment[] @relation(name: "comments")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  likedBy        User[]        @relation(name: "likedBy")
-  savedBy        User[]        @relation(name: "savedBy")
-  Media          Media[]
+  id              String        @id @default(uuid())
+  author          User          @relation(fields: [authorId], references: [id])
+  authorId        String
+  post            Post          @relation(fields: [post_id], references: [id])
+  post_id         String        @map("postsId")
+  content         String
+  parentComment   postComment?  @relation(fields: [parentCommentId], references: [id], name: "comments", onDelete: Cascade)
+  parentCommentId String?
+  comments        postComment[] @relation(name: "comments")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  likedBy         User[]        @relation(name: "likedBy")
+  savedBy         User[]        @relation(name: "savedBy")
+  Media           Media[]
 
   @@map("postComments")
 }

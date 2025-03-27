@@ -11,7 +11,7 @@ import { User as LocalUser } from '@prisma/client';
 import forbiddenError from '../errors/errorTypes/forbiddenError';
 import getPostSchema from '../validations/getPostSchema';
 import { postService } from '../services/postService';
-import uploadFiles from '../utils/uploadFiles';
+import { uploadFiles } from '../utils/uploadFiles';
 
 const MAX_MEDIA_UPLOAD = 3;
 
@@ -85,7 +85,7 @@ export const getPost = asyncHandler(async function (
   const data = getPostSchema.parse(query);
   const page = data.page ? parseInt(data.page) : 1;
   const limit = data.limit ? parseInt(data.limit) : 10;
-  const posts = await postService.getPosts({
+  const foundPost = await postService.getPosts({
     postId: data.id,
     authorId: data.authorId,
     authorEmail: data.authorEmail,
@@ -96,8 +96,9 @@ export const getPost = asyncHandler(async function (
     page: page,
   });
 
-  res.json({
-    posts,
+  res.status(200).json({
+    posts: foundPost.posts,
+    pageCount: foundPost.pageCount,
     page,
   });
 });
@@ -151,7 +152,7 @@ export const uploadPostImage = [
 
     const files = req.files as Express.Multer.File[];
 
-    await uploadFiles({ files, postId, userId: user.id });
+    await uploadFiles.post({ files, postId, userId: user.id });
 
     res.status(200).json({
       message: 'successfully uploaded image',
@@ -208,7 +209,7 @@ export const uploadPostVideo = [
 
     const files = req.files as Express.Multer.File[];
 
-    await uploadFiles({ files, postId, userId: user.id });
+    await uploadFiles.post({ files, postId, userId: user.id });
 
     res.status(200).json({
       message: 'successfully uploaded video',

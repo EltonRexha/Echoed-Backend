@@ -8,12 +8,7 @@ dotenv.config({
 import express, { NextFunction, Request, Response } from 'express';
 import apiRouter from './routes/apiRouter';
 import cors from 'cors';
-import CustomError from './errors/customError';
 import cookieParser from 'cookie-parser';
-import ZodError from './errors/ZodError';
-import { z } from 'zod';
-import internalError from './errors/errorTypes/internalError';
-import zodError from './errors/errorTypes/zodError';
 import cloudinaryConfig from './config/cloudinary';
 import globalErrorCatcher from './middlewares/globalErrorCatcher';
 
