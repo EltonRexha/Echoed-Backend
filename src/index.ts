@@ -5,7 +5,7 @@ dotenv.config({
   path: path.resolve(__dirname, '../.env'),
 });
 
-import express, { NextFunction, Request, Response } from 'express';
+import express from 'express';
 import apiRouter from './routes/apiRouter';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';

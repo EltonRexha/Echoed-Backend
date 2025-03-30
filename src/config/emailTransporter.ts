@@ -20,10 +20,10 @@ emailTransporter.use(
   hbs({
     viewEngine: {
       extname: '.hbs',
-      partialsDir: path.join(__dirname, '..', 'emails'),
+      partialsDir: path.join(__dirname, '..', '/views', 'emails'),
       defaultLayout: false,
     },
-    viewPath: path.join(__dirname, '..', 'emails'),
+    viewPath: path.join(__dirname, '..', '/views', 'emails'),
     extName: '.hbs',
   })
 );
