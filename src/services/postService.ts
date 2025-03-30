@@ -4,7 +4,18 @@ import _ from 'lodash';
 import { cache } from './cacheService';
 
 export namespace postService {
-  export async function getPosts(query: {
+  export async function getPosts({
+    postId,
+    authorId,
+    authorUsername,
+    authorEmail,
+    likedByUserId,
+    savedByUserId,
+    parentPostId,
+    tags,
+    page = 1,
+    limit = 10,
+  }: {
     postId?: string;
     authorId?: string;
     authorUsername?: string;
@@ -12,25 +23,22 @@ export namespace postService {
     likedByUserId?: string;
     savedByUserId?: string;
     parentPostId?: string;
+    tags?: string[];
     page?: number;
     limit?: number;
   }) {
-    const {
-      postId,
-      authorId,
-      authorUsername,
-      authorEmail,
-      likedByUserId,
-      savedByUserId,
-      parentPostId,
-      page = 1,
-      limit = 10,
-    } = query;
     return cache.getOrSetCache({
       cb: async () => {
         const skip = (page - 1) * limit;
         const posts = await prisma.post.findMany({
           where: {
+            ...(tags && {
+              postTags: {
+                some: {
+                  OR: tags.map((value) => ({ name: value })),
+                },
+              },
+            }),
             ...(postId && { id: postId }),
             ...((authorId || authorEmail || authorUsername) && {
               author: {
@@ -79,16 +87,25 @@ export namespace postService {
       },
       cacheType: 'short',
       keyName: 'post',
-      keyParams: _.pickBy(query, (value) => value !== null),
+      keyParams: {
+        authorEmail,
+        authorId,
+        authorUsername,
+        likedByUserId,
+        parentPostId,
+        postId,
+        savedByUserId,
+        tags,
+      },
     });
   }
 
-  export async function getPost({ id }: { id: string }) {
+  export async function getPost({ postId }: { postId: string }) {
     return cache.getOrSetCache({
       cb: async () => {
         return await prisma.post.findUnique({
           where: {
-            id,
+            id: postId,
           },
           include: {
             Media: true,
@@ -97,7 +114,7 @@ export namespace postService {
       },
       cacheType: 'short',
       keyName: 'post',
-      keyParams: { id },
+      keyParams: { postId },
     });
   }
 
@@ -119,6 +136,21 @@ export namespace postService {
           },
         },
       },
+      include: {
+        author: true,
+        MainPost: true,
+      },
+    });
+
+    await cache.invalidateCache({
+      keyName: 'post',
+      keyParams: {
+        authorEmail: updatedPost.author.email,
+        authorId: updatedPost.author.id,
+        authorUsername: updatedPost.author.email,
+        parentPostId: updatedPost.MainPost?.id,
+        postId: updatedPost.id,
+      },
     });
 
     return updatedPost;
@@ -135,6 +167,21 @@ export namespace postService {
     userId: string;
     mainPostId?: string;
   }) {
+    const user = (await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    }))!;
+
+    await cache.invalidateCache({
+      keyName: 'post',
+      keyParams: {
+        authorId: user.id,
+        authorEmail: user.email,
+        authorUsername: user.username,
+      },
+    });
+    
     return await prisma.$transaction(async () => {
       const postTags = await Promise.all(
         tags.map(async (tag) => {
@@ -183,7 +230,7 @@ export namespace postService {
     userId: string;
     postId: string;
   }) {
-    return await prisma.post.update({
+    const updatedPost = await prisma.post.update({
       where: {
         id: postId,
       },
@@ -194,7 +241,22 @@ export namespace postService {
           },
         },
       },
+      include: {
+        author: true,
+      },
     });
+
+    await cache.invalidateCache({
+      keyName: 'post',
+      keyParams: {
+        authorEmail: updatedPost.author.email,
+        authorId: updatedPost.author.id,
+        authorUsername: updatedPost.author.username,
+        postId: updatedPost.id,
+      },
+    });
+
+    return updatedPost;
   }
 
   export async function savePost({
@@ -204,7 +266,7 @@ export namespace postService {
     userId: string;
     postId: string;
   }) {
-    return await prisma.post.update({
+    const updatedPost = await prisma.post.update({
       where: {
         id: postId,
       },
@@ -215,20 +277,48 @@ export namespace postService {
           },
         },
       },
+      include: {
+        author: true,
+      },
     });
-  }
 
-  export async function deletePost({ postId }: { postId: string }) {
     await cache.invalidateCache({
       keyName: 'post',
       keyParams: {
-        postId,
+        authorEmail: updatedPost.author.email,
+        authorId: updatedPost.author.id,
+        authorUsername: updatedPost.author.username,
+        postId: updatedPost.id,
       },
     });
-    return await prisma.post.delete({
+
+    return updatedPost;
+  }
+
+  export async function deletePost({ postId }: { postId: string }) {
+    const deletedPost = await prisma.post.delete({
       where: {
         id: postId,
       },
+      include: {
+        author: true,
+        postTags: true,
+        MainPost: true,
+      },
     });
+
+    await cache.invalidateCache({
+      keyName: 'post',
+      keyParams: {
+        authorEmail: deletedPost.author.email,
+        authorId: deletedPost.author.id,
+        authorUsername: deletedPost.author.username,
+        postId: deletedPost.id,
+        tags: deletedPost.postTags.map((value) => value.name),
+        parentPostId: deletedPost.MainPost?.id,
+      },
+    });
+
+    return deletedPost;
   }
 }

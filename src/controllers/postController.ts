@@ -36,7 +36,7 @@ export const createPost = asyncHandler(async function (
   }
 
   if (mainPostId) {
-    const mainPost = await postService.getPost({ id: mainPostId });
+    const mainPost = await postService.getPost({ postId: mainPostId });
 
     if (!mainPost) {
       next(notFoundError('Main post not found'));
@@ -117,7 +117,7 @@ export const deletePost = asyncHandler(async function (
     return;
   }
 
-  const post = await postService.getPost({ id: postId });
+  const post = await postService.getPost({ postId: postId });
 
   if (!post) {
     res.status(404).json({
@@ -158,7 +158,7 @@ export const uploadPostImage = [
       return;
     }
 
-    const post = await postService.getPost({ id: postId });
+    const post = await postService.getPost({ postId: postId });
 
     if (!post) {
       next(notFoundError('Post not found'));
@@ -215,7 +215,7 @@ export const uploadPostVideo = [
       return;
     }
 
-    const post = await postService.getPost({ id: postId });
+    const post = await postService.getPost({ postId: postId });
 
     if (!post) {
       next(notFoundError('Post not found'));
@@ -262,7 +262,7 @@ export const likePost = asyncHandler(
 
     const { postId } = req.params;
 
-    const post = await postService.getPost({ id: postId });
+    const post = await postService.getPost({ postId: postId });
 
     if (!post) {
       next(notFoundError('Post not found'));
@@ -290,7 +290,7 @@ export const savePost = asyncHandler(
 
     const { postId } = req.params;
 
-    const post = await postService.getPost({ id: postId });
+    const post = await postService.getPost({ postId: postId });
 
     if (!post) {
       next(notFoundError('Post not found'));

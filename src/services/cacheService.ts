@@ -1,3 +1,19 @@
+/**
+ * We are using redis as caching our queries
+ * every query is saved as key=value pair 
+ * where the key looks like resource?key=value&key2=value2
+ * each resource has a specific allowed keys depending the
+ * queries on its service
+ * 
+ * How does invalidation work?
+ * 
+ * Well you are going to pass a keyParam object
+ * then it will check all the keys in the redis db
+ * and check the key=value pair to match your keyParams
+ * at least one has to match and it will remove from cache
+ * 
+ */
+
 import redisClient from '../config/redis';
 
 const cacheTime = {
@@ -15,14 +31,39 @@ const cacheTime = {
   monthly: 31 * 24 * 60 * 60,
 } satisfies { [key: string]: number };
 
-function generateKeyFromKeyParams({
+interface KeyParams {
+  post: {
+    postId?: string;
+    authorId?: string;
+    authorUsername?: string;
+    authorEmail?: string;
+    likedByUserId?: string;
+    savedByUserId?: string;
+    parentPostId?: string;
+    tags?: string[];
+  };
+  comment: {
+    commentId?: string;
+    authorId?: string;
+    authorUsername?: string;
+    authorEmail?: string;
+    likedByUserId?: string;
+    savedByUserId?: string;
+    parentCommentId?: string;
+    postId?: string;
+  };
+}
+
+type KeyName = keyof KeyParams;
+
+function generateKeyFromKeyParams<T extends KeyName>({
   keyName,
   keyParams,
 }: {
-  keyName: string;
-  keyParams?: Record<string, any>;
+  keyName: T;
+  keyParams?: KeyParams[T];
 }) {
-  let key = keyName;
+  let key = keyName as string;
 
   for (const keyParam in keyParams) {
     key += `?${keyParam}=${keyParams[keyParam]}`;
@@ -31,19 +72,17 @@ function generateKeyFromKeyParams({
   return key;
 }
 
-async function deleteMatchingKeys({
+async function deleteMatchingKeys<T extends KeyName>({
   keyName,
   keyParams,
 }: {
-  keyName: string;
-  keyParams?: Record<string, any>;
+  keyName: T;
+  keyParams?: KeyParams[T];
 }) {
   try {
     const pattern = `${keyName}*`;
     let cursor = 0;
     let keysToDelete: string[] = [];
-
-    console.log('in here');
 
     do {
       const { cursor: newCursor, keys: foundKeys } = await redisClient.scan(
@@ -54,13 +93,12 @@ async function deleteMatchingKeys({
         }
       );
 
-      console.log(foundKeys)
       cursor = newCursor;
 
       foundKeys.forEach((key: string) => {
         if (
           keyParams &&
-          Object.entries(keyParams).every(([param, value]) =>
+          Object.entries(keyParams).some(([param, value]) =>
             key.includes(`${param}=${value}`)
           )
         ) {
@@ -79,26 +117,26 @@ async function deleteMatchingKeys({
 }
 
 export namespace cache {
-  export async function getCache({
+  export async function getCache<T extends KeyName>({
     keyName,
     keyParams,
   }: {
-    keyName: string;
-    keyParams?: Record<string, any>;
+    keyName: T;
+    keyParams?: KeyParams[T];
   }) {
     let key = generateKeyFromKeyParams({ keyName, keyParams });
 
     return await redisClient.get(key);
   }
 
-  export async function setCache({
+  export async function setCache<T extends KeyName>({
     keyName,
     keyParams,
     value,
     cacheType,
   }: {
-    keyName: string;
-    keyParams?: Record<string, any>;
+    keyName: T;
+    keyParams?: KeyParams[T];
     value: string;
     cacheType: keyof typeof cacheTime;
   }) {
@@ -107,23 +145,23 @@ export namespace cache {
     return await redisClient.setEx(key, cacheTime[cacheType], value);
   }
 
-  export async function getOrSetCache<T>({
+  export async function getOrSetCache<T extends KeyName, G>({
     keyName,
     keyParams,
     cb,
     cacheType,
   }: {
-    keyName: string;
-    keyParams?: Record<string, any>;
-    cb: () => Promise<T>;
+    keyName: T;
+    keyParams?: KeyParams[T];
+    cb: () => Promise<G>;
     cacheType: keyof typeof cacheTime;
-  }): Promise<T> {
+  }): Promise<G> {
     let key = generateKeyFromKeyParams({ keyName, keyParams });
     try {
       const cachedData = await redisClient.get(key);
 
       if (cachedData) {
-        return JSON.parse(cachedData) as T;
+        return JSON.parse(cachedData) as G;
       }
 
       const data = await cb();
@@ -136,12 +174,12 @@ export namespace cache {
     }
   }
 
-  export async function invalidateCache({
+  export async function invalidateCache<T extends KeyName>({
     keyName,
     keyParams,
   }: {
-    keyName: string;
-    keyParams?: Record<string, any>;
+    keyName: T;
+    keyParams: KeyParams[T];
   }) {
     try {
       await deleteMatchingKeys({ keyName, keyParams });
