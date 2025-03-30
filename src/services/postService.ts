@@ -1,18 +1,10 @@
 import { prisma } from '../db/client';
 import MediaInput from '../types/mediaInput';
+import _ from 'lodash';
+import { cache } from './cacheService';
 
 export namespace postService {
-  export async function getPosts({
-    postId,
-    authorId,
-    authorUsername,
-    authorEmail,
-    likedByUserId,
-    savedByUserId,
-    parentPostId,
-    page = 1,
-    limit = 10,
-  }: {
+  export async function getPosts(query: {
     postId?: string;
     authorId?: string;
     authorUsername?: string;
@@ -23,64 +15,89 @@ export namespace postService {
     page?: number;
     limit?: number;
   }) {
-    const skip = (page - 1) * limit;
-    const posts = await prisma.post.findMany({
-      where: {
-        ...(postId && { id: postId }),
-        ...((authorId || authorEmail || authorUsername) && {
-          author: {
-            id: authorId,
-            email: authorEmail,
-            username: authorUsername,
-          },
-        }),
-        ...(likedByUserId && {
-          likedBy: {
-            some: {
-              id: likedByUserId,
-            },
-          },
-        }),
-        ...(savedByUserId && {
-          savedBy: {
-            some: {
-              id: savedByUserId,
-            },
-          },
-        }),
+    const {
+      postId,
+      authorId,
+      authorUsername,
+      authorEmail,
+      likedByUserId,
+      savedByUserId,
+      parentPostId,
+      page = 1,
+      limit = 10,
+    } = query;
+    return cache.getOrSetCache({
+      cb: async () => {
+        const skip = (page - 1) * limit;
+        const posts = await prisma.post.findMany({
+          where: {
+            ...(postId && { id: postId }),
+            ...((authorId || authorEmail || authorUsername) && {
+              author: {
+                id: authorId,
+                email: authorEmail,
+                username: authorUsername,
+              },
+            }),
+            ...(likedByUserId && {
+              likedBy: {
+                some: {
+                  id: likedByUserId,
+                },
+              },
+            }),
+            ...(savedByUserId && {
+              savedBy: {
+                some: {
+                  id: savedByUserId,
+                },
+              },
+            }),
 
-        ...(parentPostId && {
-          MainPost: {
-            id: parentPostId,
+            ...(parentPostId && {
+              MainPost: {
+                id: parentPostId,
+              },
+            }),
           },
-        }),
-      },
-      include: {
-        MainPost: true,
-        Media: true,
-        postTags: {
-          select: {
-            name: true,
+          include: {
+            MainPost: true,
+            Media: true,
+            postTags: {
+              select: {
+                name: true,
+              },
+            },
           },
-        },
+          skip,
+          take: limit,
+        });
+
+        const pageCount = posts.length / limit;
+
+        return { posts, pageCount };
       },
-      skip,
-      take: limit,
+      cacheType: 'short',
+      keyName: 'post',
+      keyParams: _.pickBy(query, (value) => value !== null),
     });
-
-    const pageCount = posts.length / limit;
-
-    return { posts, pageCount };
   }
 
   export async function getPost({ id }: { id: string }) {
-    return await prisma.post.findUnique({
-      where: {
-        id,
+    return cache.getOrSetCache({
+      cb: async () => {
+        return await prisma.post.findUnique({
+          where: {
+            id,
+          },
+          include: {
+            Media: true,
+          },
+        });
       },
-      include: {
-        Media: true,
-      },
+      cacheType: 'short',
+      keyName: 'post',
+      keyParams: { id },
     });
   }
 
@@ -202,10 +219,16 @@ export namespace postService {
   }
 
   export async function deletePost({ postId }: { postId: string }) {
+    await cache.invalidateCache({
+      keyName: 'post',
+      keyParams: {
+        postId,
+      },
+    });
     return await prisma.post.delete({
       where: {
         id: postId,
-      },  
+      },
     });
   }
 }

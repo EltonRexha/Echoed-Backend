@@ -4,7 +4,6 @@ import bcrypt from 'bcryptjs';
 import internalError from '../errors/errorTypes/internalError';
 import sendVerifyEmail from '../utils/mail/sendVerifyMail';
 import getUserSchema from '../validations/getUserSchema';
-import findUser from '../utils/findUser';
 import badRequestError from '../errors/errorTypes/badRequestError';
 import asyncHandler from 'express-async-handler';
 import { isGithubUser, isGoogleUser, isLocalUser, User } from '../types/user';
@@ -55,7 +54,10 @@ export const createUser = asyncHandler(
       gender,
     } = user;
 
-    const foundUser = await findUser(username, email);
+    const foundUser = await Promise.all([
+      userService.getLocalUser({ username, email }),
+      userService.getGoogleUser({ email }),
+    ]);
     const [localUser, googleUser] = foundUser;
 
     const userExists = !!(localUser || googleUser);
