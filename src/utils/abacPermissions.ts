@@ -3,7 +3,8 @@
  */
 
 import { Post, postComment, Roles, User } from '@prisma/client';
-import UserIsBlocked from './UserIsBlocked';
+import { userService } from '../services/userService';
+const {UserIsBlocked} = userService;
 
 type Resources = {
   Posts: {

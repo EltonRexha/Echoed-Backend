@@ -1,5 +1,7 @@
 import { prisma } from '../db/client';
 import MediaInput from '../types/mediaInput';
+import { cache } from './cacheService';
+import _ from 'lodash';
 
 export namespace commentService {
   export async function getComments({
@@ -10,6 +12,7 @@ export namespace commentService {
     likedByUserId,
     savedByUserId,
     parentCommentId,
+    postId,
     page = 1,
     limit = 10,
   }: {
@@ -20,51 +23,73 @@ export namespace commentService {
     likedByUserId?: string;
     savedByUserId?: string;
     parentCommentId?: string;
+    postId?: string;
     page?: number;
     limit?: number;
   }) {
-    const skip = (page - 1) * limit;
-    const comments = await prisma.postComment.findMany({
-      where: {
-        ...(commentId && { id: commentId }),
-        ...((authorId || authorEmail || authorUsername) && {
-          author: {
-            id: authorId,
-            email: authorEmail,
-            username: authorUsername,
-          },
-        }),
-        ...(likedByUserId && {
-          likedBy: {
-            some: {
-              id: likedByUserId,
-            },
-          },
-        }),
-        ...(savedByUserId && {
-          savedBy: {
-            some: {
-              id: savedByUserId,
-            },
-          },
-        }),
+    return cache.getOrSetCache({
+      cb: async () => {
+        const skip = (page - 1) * limit;
+        const comments = await prisma.postComment.findMany({
+          where: {
+            ...(commentId && { id: commentId }),
+            ...((authorId || authorEmail || authorUsername) && {
+              author: {
+                id: authorId,
+                email: authorEmail,
+                username: authorUsername,
+              },
+            }),
+            ...(postId && {
+              post: {
+                id: postId,
+              },
+            }),
+            ...(likedByUserId && {
+              likedBy: {
+                some: {
+                  id: likedByUserId,
+                },
+              },
+            }),
+            ...(savedByUserId && {
+              savedBy: {
+                some: {
+                  id: savedByUserId,
+                },
+              },
+            }),
 
-        ...(parentCommentId && {
-          parentComment: {
-            id: parentCommentId,
+            ...(parentCommentId && {
+              parentComment: {
+                id: parentCommentId,
+              },
+            }),
           },
-        }),
+          include: {
+            Media: true,
+          },
+          skip,
+          take: limit,
+        });
+
+        const pageCount = comments.length / limit;
+
+        return { comments, pageCount };
       },
-      include: {
-        Media: true,
+      cacheType: 'short',
+      keyName: 'comment',
+      keyParams: {
+        authorEmail,
+        authorId,
+        authorUsername,
+        commentId,
+        likedByUserId,
+        parentCommentId,
+        postId,
+        savedByUserId,
       },
-      skip,
-      take: limit,
     });
-
-    const pageCount = comments.length / limit;
-
-    return { comments, pageCount };
   }
 
   export async function createComment({
@@ -121,24 +146,22 @@ export namespace commentService {
     return comment;
   }
 
-  export async function getComment({
-    commentId,
-    postId,
-  }: {
-    commentId: string;
-    postId?: string;
-  }) {
-    return await prisma.postComment.findUnique({
-      where: {
-        id: commentId,
-        ...(postId && {
-          post: {
-            id: postId,
+  export async function getComment({ commentId }: { commentId: string }) {
+    return cache.getOrSetCache({
+      cb: async () => {
+        return await prisma.postComment.findUnique({
+          where: {
+            id: commentId,
           },
-        }),
+          include: {
+            Media: true,
+          },
+        });
       },
-      include: {
-        Media: true,
+      cacheType: 'short',
+      keyName: 'comment',
+      keyParams: {
+        commentId,
       },
     });
   }

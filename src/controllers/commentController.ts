@@ -21,7 +21,7 @@ export const postComment = asyncHandler(
 
     const { postId } = req.params;
 
-    const post = await postService.getPost({ id: postId });
+    const post = await postService.getPost({ postId: postId });
 
     if (!post) {
       next(notFoundError('Post not found'));
@@ -48,7 +48,6 @@ export const postComment = asyncHandler(
     if (parentCommentId) {
       const parentComment = await commentService.getComment({
         commentId: parentCommentId,
-        postId: postId,
       });
 
       if (!parentComment) {
