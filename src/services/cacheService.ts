@@ -1,20 +1,21 @@
 /**
  * We are using redis as caching our queries
- * every query is saved as key=value pair 
+ * every query is saved as key=value pair
  * where the key looks like resource?key=value&key2=value2
  * each resource has a specific allowed keys depending the
  * queries on its service
- * 
+ *
  * How does invalidation work?
- * 
+ *
  * Well you are going to pass a keyParam object
  * then it will check all the keys in the redis db
  * and check the key=value pair to match your keyParams
  * at least one has to match and it will remove from cache
- * 
+ *
  */
 
 import redisClient from '../config/redis';
+import { prisma } from '../db/client';
 
 const cacheTime = {
   //10 minutes
@@ -31,7 +32,7 @@ const cacheTime = {
   monthly: 31 * 24 * 60 * 60,
 } satisfies { [key: string]: number };
 
-interface KeyParams {
+export interface KeyParams {
   post: {
     postId?: string;
     authorId?: string;
@@ -40,6 +41,8 @@ interface KeyParams {
     likedByUserId?: string;
     savedByUserId?: string;
     parentPostId?: string;
+    page?: number;
+    limit?: number;
     tags?: string[];
   };
   comment: {
@@ -51,6 +54,15 @@ interface KeyParams {
     savedByUserId?: string;
     parentCommentId?: string;
     postId?: string;
+    page?: number;
+    limit?: number;
+  };
+  user: {
+    id?: string;
+    email?: string;
+    username?: string;
+    page?: number;
+    limit?: number;
   };
 }
 
