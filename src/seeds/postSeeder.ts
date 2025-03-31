@@ -33,7 +33,7 @@ export class PostSeeder implements Seeder {
   }
 
   public async seed(amount: number, prevSeedIds: SeederDataList) {
-    console.log(`Seeding posts]... [amount: ${amount}]`);
+    console.log(`Seeding posts... [amount: ${amount}]`);
     const ids: string[] = [];
     for (let i = 1; i <= amount; i++) {
       console.log(`Seeding post ${i}`);
