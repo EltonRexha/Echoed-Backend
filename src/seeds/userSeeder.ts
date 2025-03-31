@@ -5,13 +5,9 @@ import _ from 'lodash';
 import { userService } from '../services/userService';
 
 export class UserSeeder implements Seeder {
-  public constructor() {}
-
   private generateUser() {
-    const someRecentDate = faker.date.recent();
-    const user: Omit<User, 'id'> & Omit<UserInfo, 'id'> = {
-      createdAt: someRecentDate,
-      updatedAt: someRecentDate,
+    const user: Omit<User, 'id' | 'createdAt' | 'updatedAt'> &
+      Omit<UserInfo, 'id' | 'createdAt' | 'updatedAt'> = {
       username: faker.internet.displayName(),
       email: faker.internet.email(),
       firstName: faker.person.firstName(),
@@ -34,7 +30,7 @@ export class UserSeeder implements Seeder {
   private async seedUser() {
     const user = this.generateUser();
 
-    await userService.createLocalUser({
+    const createdUser = await userService.createLocalUser({
       firstName: user.firstName,
       lastName: user.lastName,
       country: user.country,
@@ -45,16 +41,18 @@ export class UserSeeder implements Seeder {
       roles: user.Roles,
       verified: user.verified,
     });
-    return;
+    return createdUser.id;
   }
 
   public async seed(amount: number) {
     console.log(`Seeding user... [amount: ${amount}]`);
+    const ids: string[] = [];
     for (let i = 1; i <= amount; i++) {
       console.log(`Seeding user ${i}`);
-      await this.seedUser();
+      const userId = await this.seedUser();
+      ids.push(userId);
     }
     console.log('finished seeding user');
-    return;
+    return ids;
   }
 }
