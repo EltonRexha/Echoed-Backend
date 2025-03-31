@@ -96,6 +96,8 @@ export namespace postService {
         postId,
         savedByUserId,
         tags,
+        page,
+        limit,
       },
     });
   }
@@ -142,7 +144,7 @@ export namespace postService {
       },
     });
 
-    await cache.invalidateCache({
+    cache.invalidateCache({
       keyName: 'post',
       keyParams: {
         authorEmail: updatedPost.author.email,
@@ -173,7 +175,7 @@ export namespace postService {
       },
     }))!;
 
-    await cache.invalidateCache({
+    cache.invalidateCache({
       keyName: 'post',
       keyParams: {
         authorId: user.id,
@@ -181,7 +183,7 @@ export namespace postService {
         authorUsername: user.username,
       },
     });
-    
+
     return await prisma.$transaction(async () => {
       const postTags = await Promise.all(
         tags.map(async (tag) => {
@@ -246,7 +248,7 @@ export namespace postService {
       },
     });
 
-    await cache.invalidateCache({
+    cache.invalidateCache({
       keyName: 'post',
       keyParams: {
         authorEmail: updatedPost.author.email,
@@ -282,7 +284,7 @@ export namespace postService {
       },
     });
 
-    await cache.invalidateCache({
+    cache.invalidateCache({
       keyName: 'post',
       keyParams: {
         authorEmail: updatedPost.author.email,
@@ -307,7 +309,7 @@ export namespace postService {
       },
     });
 
-    await cache.invalidateCache({
+    cache.invalidateCache({
       keyName: 'post',
       keyParams: {
         authorEmail: deletedPost.author.email,

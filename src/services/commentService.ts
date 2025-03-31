@@ -1,6 +1,7 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../db/client';
 import MediaInput from '../types/mediaInput';
-import { cache } from './cacheService';
+import { cache, KeyParams } from './cacheService';
 import _ from 'lodash';
 
 export namespace commentService {
@@ -88,6 +89,8 @@ export namespace commentService {
         parentCommentId,
         postId,
         savedByUserId,
+        page,
+        limit,
       },
     });
   }
@@ -119,6 +122,10 @@ export namespace commentService {
             },
           },
         },
+        include: {
+          author: true,
+          parentComment: true,
+        },
       });
     } else {
       comment = await prisma.postComment.create({
@@ -140,8 +147,24 @@ export namespace commentService {
             },
           },
         },
+        include: {
+          author: true,
+          parentComment: true,
+        },
       });
     }
+
+    cache.invalidateCache({
+      keyName: 'comment',
+      keyParams: {
+        authorEmail: comment.author.email,
+        authorId: comment.author.id,
+        authorUsername: comment.author.username,
+        commentId: comment.id,
+        parentCommentId: comment.parentComment?.id,
+        postId: comment.postId,
+      },
+    });
 
     return comment;
   }
@@ -173,7 +196,7 @@ export namespace commentService {
     commentId: string;
     userId: string;
   }) {
-    return await prisma.postComment.update({
+    const updatedComment = await prisma.postComment.update({
       where: {
         id: commentId,
       },
@@ -184,7 +207,25 @@ export namespace commentService {
           },
         },
       },
+      include: {
+        author: true,
+        parentComment: true,
+      },
     });
+
+    cache.invalidateCache({
+      keyName: 'comment',
+      keyParams: {
+        authorEmail: updatedComment.author.email,
+        authorId: updatedComment.author.id,
+        authorUsername: updatedComment.author.username,
+        commentId: updatedComment.id,
+        parentCommentId: updatedComment.parentComment?.id,
+        postId: updatedComment.postId,
+      },
+    });
+
+    return updatedComment;
   }
 
   export async function saveComment({
@@ -194,7 +235,7 @@ export namespace commentService {
     commentId: string;
     userId: string;
   }) {
-    return await prisma.postComment.update({
+    const updatedComment = await prisma.postComment.update({
       where: {
         id: commentId,
       },
@@ -205,7 +246,25 @@ export namespace commentService {
           },
         },
       },
+      include: {
+        author: true,
+        parentComment: true,
+      },
     });
+
+    cache.invalidateCache({
+      keyName: 'comment',
+      keyParams: {
+        authorEmail: updatedComment.author.email,
+        authorId: updatedComment.author.id,
+        authorUsername: updatedComment.author.username,
+        commentId: updatedComment.id,
+        parentCommentId: updatedComment.parentComment?.id,
+        postId: updatedComment.postId,
+      },
+    });
+
+    return updatedComment;
   }
 
   export async function addMediaToComment({
@@ -226,16 +285,50 @@ export namespace commentService {
           },
         },
       },
+      include: {
+        author: true,
+        parentComment: true,
+      },
+    });
+
+    cache.invalidateCache({
+      keyName: 'comment',
+      keyParams: {
+        authorEmail: updatedComment.author.email,
+        authorId: updatedComment.author.id,
+        authorUsername: updatedComment.author.username,
+        commentId: updatedComment.id,
+        parentCommentId: updatedComment.parentComment?.id,
+        postId: updatedComment.postId,
+      },
     });
 
     return updatedComment;
   }
 
   export async function deleteComment({ commentId }: { commentId: string }) {
-    return await prisma.postComment.delete({
+    const deletedComment = await prisma.postComment.delete({
       where: {
         id: commentId,
       },
+      include: {
+        author: true,
+        parentComment: true,
+      },
     });
+
+    cache.invalidateCache({
+      keyName: 'comment',
+      keyParams: {
+        authorEmail: deletedComment.author.email,
+        authorId: deletedComment.author.id,
+        authorUsername: deletedComment.author.username,
+        commentId: deletedComment.id,
+        parentCommentId: deletedComment.parentComment?.id,
+        postId: deletedComment.postId,
+      },
+    });
+
+    return deletedComment;
   }
 }

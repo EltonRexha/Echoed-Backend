@@ -1,5 +1,6 @@
-import { Gender, Prisma, Roles, User, UserInfo } from '@prisma/client';
+import { Gender, Prisma, Roles } from '@prisma/client';
 import { prisma } from '../db/client';
+import { cache } from './cacheService';
 
 export namespace userService {
   export async function getLocalUser({
@@ -11,21 +12,32 @@ export namespace userService {
     email?: string;
     id?: string;
   }) {
-    const user = await prisma.user.findFirst({
-      where: {
-        ...(username && {
-          username: { contains: username, mode: 'insensitive' },
-        }),
-        ...(email && { email: { contains: email, mode: 'insensitive' } }),
-        ...(id && { id: id }),
+    return cache.getOrSetCache({
+      cb: async () => {
+        const user = await prisma.user.findFirst({
+          where: {
+            ...(username && {
+              username: { contains: username, mode: 'insensitive' },
+            }),
+            ...(email && { email: { contains: email, mode: 'insensitive' } }),
+            ...(id && { id: id }),
+          },
+          include: {
+            ProfileImage: true,
+            UserInfo: true,
+          },
+        });
+
+        return user;
       },
-      include: {
-        ProfileImage: true,
-        UserInfo: true,
+      cacheType: 'medium',
+      keyName: 'user',
+      keyParams: {
+        email,
+        username,
+        id,
       },
     });
-
-    return user;
   }
 
   export async function createLocalUser({
@@ -89,6 +101,15 @@ export namespace userService {
       },
     });
 
+    cache.invalidateCache({
+      keyName: 'user',
+      keyParams: {
+        email: user.email,
+        username: user.username,
+        id: user.id,
+      },
+    });
+
     return user;
   }
 
@@ -105,32 +126,45 @@ export namespace userService {
     page?: number;
     limit?: number;
   }) {
-    const skip = (page - 1) * limit;
+    return cache.getOrSetCache({
+      cb: async () => {
+        const skip = (page - 1) * limit;
 
-    const users = await prisma.user.findMany({
-      where: {
-        username: {
-          equals: username,
-          mode: 'insensitive',
-        },
-        email: {
-          equals: email,
-          mode: 'insensitive',
-        },
-        id: id,
+        const users = await prisma.user.findMany({
+          where: {
+            username: {
+              equals: username,
+              mode: 'insensitive',
+            },
+            email: {
+              equals: email,
+              mode: 'insensitive',
+            },
+            id: id,
+          },
+          select: {
+            email: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            ProfileImage: true,
+          },
+          skip,
+          take: limit,
+        });
+
+        return users;
       },
-      select: {
-        email: true,
-        username: true,
-        firstName: true,
-        lastName: true,
-        ProfileImage: true,
+      cacheType: 'medium',
+      keyName: 'user',
+      keyParams: {
+        email,
+        id,
+        username,
+        page,
+        limit,
       },
-      skip,
-      take: limit,
     });
-
-    return users;
   }
 
   export async function getGoogleUser({
@@ -143,15 +177,23 @@ export namespace userService {
     email?: string;
     options?: Omit<Prisma.GoogleUserFindFirstArgs, 'where'>;
   }) {
-    const user = await prisma.googleUser.findFirst({
-      where: {
-        ...(email && { email: { contains: email, mode: 'insensitive' } }),
-        ...(googleUserId && { googleUserId }),
-        ...(id && { id }),
+    return cache.getOrSetCache({
+      cb: async () => {
+        return await prisma.googleUser.findFirst({
+          where: {
+            ...(email && { email: { contains: email, mode: 'insensitive' } }),
+            ...(googleUserId && { googleUserId }),
+            ...(id && { id }),
+          },
+        });
+      },
+      cacheType: 'medium',
+      keyName: 'user',
+      keyParams: {
+        id,
+        email,
       },
     });
-
-    return user;
   }
 
   export async function getGithubUser({
@@ -161,15 +203,22 @@ export namespace userService {
     githubUserId?: string;
     id?: string;
   }) {
-    const user = await prisma.githubUser.findFirst({
-      where: {
-        ...(githubUserId && { githubUserId: githubUserId }),
-        ...(githubUserId && { githubUserId: githubUserId }),
-        ...(id && { id }),
+    return cache.getOrSetCache({
+      cb: async () => {
+        return await prisma.githubUser.findFirst({
+          where: {
+            ...(githubUserId && { githubUserId: githubUserId }),
+            ...(githubUserId && { githubUserId: githubUserId }),
+            ...(id && { id }),
+          },
+        });
+      },
+      cacheType: 'medium',
+      keyName: 'user',
+      keyParams: {
+        id,
       },
     });
-
-    return user;
   }
 
   export async function getGoogleUserAndLocalUser({
@@ -182,18 +231,26 @@ export namespace userService {
     email?: string;
     options?: Omit<Prisma.GoogleUserFindFirstArgs, 'where'>;
   }) {
-    const user = await prisma.googleUser.findFirst({
-      where: {
-        ...(email && { email: { contains: email, mode: 'insensitive' } }),
-        ...(googleUserId && { googleUserId }),
-        ...(id && { id }),
+    return cache.getOrSetCache({
+      cb: async () => {
+        return await prisma.googleUser.findFirst({
+          where: {
+            ...(email && { email: { contains: email, mode: 'insensitive' } }),
+            ...(googleUserId && { googleUserId }),
+            ...(id && { id }),
+          },
+          include: {
+            user: true,
+          },
+        });
       },
-      include: {
-        user: true,
+      cacheType: 'medium',
+      keyName: 'user',
+      keyParams: {
+        id,
+        email,
       },
     });
-
-    return user;
   }
 
   export async function getGithubUserAndLocalUser({
@@ -203,22 +260,29 @@ export namespace userService {
     githubUserId?: string;
     id?: string;
   }) {
-    const user = await prisma.githubUser.findFirst({
-      where: {
-        ...(githubUserId && { githubUserId: githubUserId }),
-        ...(githubUserId && { githubUserId: githubUserId }),
-        ...(id && { id }),
+    return cache.getOrSetCache({
+      cb: async () => {
+        return await prisma.githubUser.findFirst({
+          where: {
+            ...(githubUserId && { githubUserId: githubUserId }),
+            ...(githubUserId && { githubUserId: githubUserId }),
+            ...(id && { id }),
+          },
+          include: {
+            user: true,
+          },
+        });
       },
-      include: {
-        user: true,
+      cacheType: 'medium',
+      keyName: 'user',
+      keyParams: {
+        id,
       },
     });
-
-    return user;
   }
 
   export async function verifyUser({ userId }: { userId: string }) {
-    return await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: {
         id: userId,
       },
@@ -226,6 +290,17 @@ export namespace userService {
         verified: true,
       },
     });
+
+    cache.invalidateCache({
+      keyName: 'user',
+      keyParams: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        username: updatedUser.username,
+      },
+    });
+
+    return updatedUser;
   }
 
   /**

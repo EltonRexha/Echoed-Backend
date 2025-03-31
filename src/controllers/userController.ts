@@ -121,6 +121,7 @@ export const getCurrentUser = asyncHandler(
           dateOfBirth: info.UserInfo.dateOfBirth,
           verified: user.verified,
           UserType: user.UserType,
+          id: user.id
         },
       });
 
