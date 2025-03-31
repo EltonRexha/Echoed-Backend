@@ -11,7 +11,7 @@ import { commentService } from '../services/commentService';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import getCommentsSchema from '../validations/getCommentsSchema';
 import { imageUpload, videoUpload } from '../config/multer';
-import { uploadFiles } from '../utils/uploadFiles';
+import { uploadFiles } from '../services/uploadFilesService';
 
 const MAX_MEDIA_UPLOAD = 1;
 

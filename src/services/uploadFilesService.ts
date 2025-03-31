@@ -1,5 +1,5 @@
 import { postService } from '../services/postService';
-import uploadStreamToCloudinary from './uploadStreamToCloudinary';
+import uploadStreamToCloudinary from '../utils/uploadStreamToCloudinary';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import notFoundError from '../errors/errorTypes/notFoundError';
 import { unlink, readFile } from 'fs/promises';
