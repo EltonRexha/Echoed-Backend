@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon ./src/index.ts",
+    "seed": "ts-node ./src/seeds/mainSeeder.ts",
     "build": "tsc"
   },
   "prisma": {
@@ -35,9 +36,11 @@
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
     "redis": "^4.7.0",
+    "uuid": "^11.1.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.6.0",
     "@types/axios": "^0.9.36",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",

@@ -5,7 +5,7 @@ import manyRequestsError from '../errors/errorTypes/manyRequestsError';
 import sendVerifyEmail from '../utils/mail/sendVerifyMail';
 import goneError from '../errors/errorTypes/goneError';
 import conflictError from '../errors/errorTypes/conflictError';
-import { resetPasswordToken, userVerificationToken } from '@prisma/client';
+import { ResetPasswordToken, UserVerificationToken } from '@prisma/client';
 import asyncHandler from 'express-async-handler';
 import sendResetPasswordEmail from '../utils/mail/sendResetPasswordMail';
 import findUserSchema from '../validations/findUserSchema';
@@ -33,7 +33,7 @@ export const sendVerificationEmail = asyncHandler(
       });
 
     const newestStoredVerificationToken = existingVerificationTokens[0] as
-      | userVerificationToken
+      | UserVerificationToken
       | undefined;
 
     const EMAIL_TIMEOUT = subMinutes(
@@ -131,7 +131,7 @@ export const sendResetPassword = asyncHandler(
       });
 
     const newestStoredResetPasswordToken = existingResetPasswordTokens[0] as
-      | resetPasswordToken
+      | ResetPasswordToken
       | undefined;
 
     const RESET_PASSWORD_TIMEOUT = subMinutes(

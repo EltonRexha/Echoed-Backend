@@ -74,7 +74,7 @@ export namespace userService {
         email,
         username,
         password,
-        ...(roles && { Role: roles }),
+        ...(roles && { Roles: roles }),
         UserInfo: {
           create: {
             country,

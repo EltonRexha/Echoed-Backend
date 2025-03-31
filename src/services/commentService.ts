@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import { prisma } from '../db/client';
 import MediaInput from '../types/mediaInput';
 import { cache, KeyParams } from './cacheService';
