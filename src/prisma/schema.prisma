@@ -28,20 +28,20 @@ model User {
   updatedAt             DateTime                @updatedAt @map("updated_at")
   createdGroups         Group[]                 @relation(name: "creator")
   messages              Message[]
-  refreshTokens         refreshTokens[]
-  userVerificationToken userVerificationToken[]
+  refreshTokens         RefreshTokens[]
+  userVerificationToken UserVerificationToken[]
   ProfileImage          Media?                  @relation(fields: [mediaId], references: [id])
   mediaId               String?
   googleUser            GoogleUser?
   githubUser            GithubUser?
   UserType              UserType                @default(local)
-  resetPasswordToken    resetPasswordToken[]
+  resetPasswordToken    ResetPasswordToken[]
   Roles                 Roles[]                 @default([user])
   blockedBy             User[]                  @relation(name: "blocked")
   blocks                User[]                  @relation(name: "blocked")
-  postComment           postComment[]
-  likedComments         postComment[]           @relation(name: "likedBy")
-  savedComments         postComment[]           @relation(name: "savedBy")
+  postComment           PostComment[]
+  likedComments         PostComment[]           @relation(name: "likedBy")
+  savedComments         PostComment[]           @relation(name: "savedBy")
 
   @@index([email])
   @@index([username])
@@ -61,7 +61,7 @@ model GoogleUser {
 
   user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        String?         @unique
-  refreshTokens refreshTokens[]
+  refreshTokens RefreshTokens[]
 
   @@id([googleUserId, id])
   @@index([email])
@@ -80,7 +80,7 @@ model GithubUser {
 
   user          User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        String?         @unique
-  refreshTokens refreshTokens[]
+  refreshTokens RefreshTokens[]
 
   @@id([githubUserId, id])
   @@map("github_users")
@@ -110,7 +110,7 @@ model Post {
   savedBy      User[]        @relation(name: "saved")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
-  postComments postComment[]
+  postComments PostComment[]
   PostTags     PostTags[]
   Media        Media[]
 
@@ -128,16 +128,16 @@ model PostTags {
   @@map("post_tags")
 }
 
-model postComment {
+model PostComment {
   id              String        @id @default(uuid())
   author          User          @relation(fields: [authorId], references: [id])
   authorId        String
   post            Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
   postId          String        @map("postsId")
   content         String
-  parentComment   postComment?  @relation(fields: [parentCommentId], references: [id], name: "comments", onDelete: Cascade)
+  parentComment   PostComment?  @relation(fields: [parentCommentId], references: [id], name: "comments", onDelete: Cascade)
   parentCommentId String?
-  comments        postComment[] @relation(name: "comments")
+  comments        PostComment[] @relation(name: "comments")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
   likedBy         User[]        @relation(name: "likedBy")
@@ -156,7 +156,7 @@ model Media {
   updatedAt      DateTime     @updatedAt @map("updated_at")
   postMedia      Post?        @relation(fields: [postMediaId], references: [id])
   postMediaId    String?
-  commentMedia   postComment? @relation(fields: [commentMediaId], references: [id])
+  commentMedia   PostComment? @relation(fields: [commentMediaId], references: [id])
   commentMediaId String?
   User           User[]
 }
@@ -189,7 +189,7 @@ model Message {
   @@map("Messages")
 }
 
-model refreshTokens {
+model RefreshTokens {
   id           String      @id @default(uuid())
   token        String      @unique
   createdAt    DateTime    @default(now()) @map("created_at")
@@ -205,7 +205,7 @@ model refreshTokens {
   @@map("refresh_tokens")
 }
 
-model resetPasswordToken {
+model ResetPasswordToken {
   id        String   @id @default(uuid())
   token     String   @unique @default(uuid())
   User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -217,7 +217,7 @@ model resetPasswordToken {
   @@map("reset_password_tokens")
 }
 
-model userVerificationToken {
+model UserVerificationToken {
   id        String   @id @default(uuid())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   token     String   @unique @default(uuid())

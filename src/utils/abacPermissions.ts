@@ -2,7 +2,7 @@
  * Uses ABAC strategy to tell if a subject can access resource
  */
 
-import { Post, postComment, Roles, User } from '@prisma/client';
+import { Post, PostComment, Roles, User } from '@prisma/client';
 import { userService } from '../services/userService';
 const {UserIsBlocked} = userService;
 
@@ -20,7 +20,7 @@ type Resources = {
       | 'repost';
   };
   Comment: {
-    resource: postComment;
+    resource: PostComment;
     actions:
       | 'create'
       | 'read'

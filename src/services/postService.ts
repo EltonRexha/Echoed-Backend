@@ -71,7 +71,7 @@ export namespace postService {
           include: {
             MainPost: true,
             Media: true,
-            postTags: {
+            PostTags: {
               select: {
                 name: true,
               },
@@ -210,7 +210,7 @@ export namespace postService {
               id: userId,
             },
           },
-          postTags: {
+          PostTags: {
             connect: postTags,
           },
           ...(mainPostId && {
@@ -304,7 +304,7 @@ export namespace postService {
       },
       include: {
         author: true,
-        postTags: true,
+        PostTags: true,
         MainPost: true,
       },
     });
@@ -316,7 +316,7 @@ export namespace postService {
         authorId: deletedPost.author.id,
         authorUsername: deletedPost.author.username,
         postId: deletedPost.id,
-        tags: deletedPost.postTags.map((value) => value.name),
+        tags: deletedPost.PostTags.map((value) => value.name),
         parentPostId: deletedPost.MainPost?.id,
       },
     });
