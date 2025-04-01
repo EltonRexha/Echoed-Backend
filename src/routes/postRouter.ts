@@ -2,7 +2,6 @@ import { Router } from 'express';
 import localUserAuthenticated from '../middlewares/localUserAuthenticated';
 import {
   createPost,
-  deletePost,
   getPost,
   likePost,
   savePost,
@@ -18,12 +17,13 @@ import {
   uploadCommentVideos,
   deleteComment,
 } from '../controllers/commentController';
+import postRecommendationRouter from './postRecommendationRouter';
 
 const router = Router();
 
+router.use(postRecommendationRouter);
 router.post('/', localUserAuthenticated, createPost);
 router.get('/', getPost);
-router.delete('/:postId', localUserAuthenticated, deletePost);
 router.delete('/comments/:commentId', localUserAuthenticated, deleteComment);
 router.get('/comments', getComments);
 router.post('/:postId/images', localUserAuthenticated, uploadPostImage);

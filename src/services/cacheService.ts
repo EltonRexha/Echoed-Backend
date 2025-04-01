@@ -65,24 +65,24 @@ export interface KeyParams {
     limit?: number;
   };
   trendingPosts: {
-    amount: string;
-    recentDate: string;
+    amount?: string;
+    recentDate?: string;
   };
   trendingFollowingPosts: {
-    amount: string;
-    recentDate: string;
-    userId: string;
+    amount?: string;
+    recentDate?: string;
+    userId?: string;
   };
   trendingFromPreferredTagsPosts: {
-    amount: string;
-    userId: string;
+    amount?: string;
+    userId?: string;
   };
   userPreferredTags: {
-    userId: string;
-    amount: string;
+    userId?: string;
+    amount?: string;
   };
   forYouPosts: {
-    userId: string;
+    userId?: string;
   };
 }
 
