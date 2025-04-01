@@ -4,6 +4,7 @@ import weightedSelection from '../utils/recommendation';
 import _ from 'lodash';
 import { subDays } from 'date-fns';
 import { cache } from './cacheService';
+import { userService } from './userService';
 
 const FOR_YOU_WEIGHTS = {
   preferredTags: 0.4,
@@ -12,6 +13,7 @@ const FOR_YOU_WEIGHTS = {
 } as const;
 
 const FOR_YOUR_CHOICES_AMOUNT = 100;
+const FOLLOWING_POST_AMOUNT = 100;
 
 export namespace postRecommendationService {
   export async function getTrendingPosts(
@@ -39,6 +41,11 @@ export namespace postRecommendationService {
             },
             {
               Reposts: {
+                _count: 'desc',
+              },
+            },
+            {
+              postComments: {
                 _count: 'desc',
               },
             },
@@ -99,6 +106,11 @@ export namespace postRecommendationService {
                 _count: 'desc',
               },
             },
+            {
+              postComments: {
+                _count: 'desc',
+              },
+            },
           ],
           take: amount,
           include: {
@@ -156,6 +168,11 @@ export namespace postRecommendationService {
                 _count: 'desc',
               },
             },
+            {
+              postComments: {
+                _count: 'desc',
+              },
+            },
           ],
           take: amount,
           include: {
@@ -200,7 +217,7 @@ export namespace postRecommendationService {
     const posts = _.shuffle(
       await cache.getOrSetCache({
         cb: async () => {
-          const forYouPosts: (Post & { why: string })[] = [];
+          const forYouPosts: Post[] = [];
 
           //Get random set of choices based on weights
           const choicesPostAmount = weightedSelection(
@@ -273,7 +290,65 @@ export namespace postRecommendationService {
     return { posts: _.slice(posts, skip, skip + limit), page };
   }
 
-  export function followingPosts() {}
+  export async function followingPosts({
+    userId,
+    page = 1,
+    limit = 10,
+  }: {
+    userId: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const skip = (page - 1) * limit;
+    const posts = _.shuffle(
+      await cache.getOrSetCache({
+        cb: async () => {
+          const followingUsers = await userService.getFollowingUsers({
+            userId,
+          });
+          return await prisma.post.findMany({
+            where: {
+              author: {
+                id: {
+                  in: followingUsers.map((user) => user.id),
+                },
+              },
+            },
+            orderBy: [
+              {
+                likedBy: {
+                  _count: 'desc',
+                },
+              },
+              {
+                savedBy: {
+                  _count: 'desc',
+                },
+              },
+              {
+                Reposts: {
+                  _count: 'desc',
+                },
+              },
+              {
+                postComments: {
+                  _count: 'desc',
+                },
+              },
+            ],
+            take: FOLLOWING_POST_AMOUNT,
+          });
+        },
+        cacheType: 'medium',
+        keyName: 'followingPosts',
+        keyParams: {
+          userId,
+        },
+      })
+    );
+
+    return _.slice(posts, skip, skip + limit);
+  }
 
   export async function addPreferredTag(
     tagId: string,
@@ -332,42 +407,39 @@ export namespace postRecommendationService {
     });
   }
 
-  async function addTrendingPosts(
-    posts: (Post & { why: string })[],
-    amount: number
-  ) {
+  async function addTrendingPosts(posts: Post[], amount: number) {
     const preferredTags = await getTrendingPosts(amount);
 
     preferredTags.forEach((post) => {
-      posts.push({ ...post, why: 'added because trending' });
+      posts.push(post);
     });
 
     return preferredTags;
   }
 
   async function addTrendingFromFollowingPosts(
-    posts: (Post & { why: string })[],
+    posts: Post[],
     amount: number,
     userId: string
   ) {
     const preferredPosts = await getTrendingFollowingPosts(amount, userId);
 
     preferredPosts.forEach((post) => {
-      posts.push({ ...post, why: 'added because following' });
+      posts.push(post);
     });
 
     return preferredPosts;
   }
 
   async function addPreferredTagsPosts(
-    posts: (Post & { why: string })[],
+    posts: Post[],
     amount: number,
     userId: string
   ) {
     const preferredPosts = await getPostsFromPreferredTags(amount, userId);
 
     preferredPosts.forEach((post) => {
-      posts.push({ ...post, why: 'added because preferred tag' });
+      posts.push(post);
     });
 
     return preferredPosts;

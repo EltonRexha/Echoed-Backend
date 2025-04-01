@@ -64,6 +64,9 @@ export interface KeyParams {
     page?: number;
     limit?: number;
   };
+  followingUsers: {
+    userId: string;
+  };
   trendingPosts: {
     amount?: string;
     recentDate?: string;
@@ -82,6 +85,9 @@ export interface KeyParams {
     amount?: string;
   };
   forYouPosts: {
+    userId?: string;
+  };
+  followingPosts: {
     userId?: string;
   };
 }
