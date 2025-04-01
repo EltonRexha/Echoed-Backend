@@ -1,4 +1,4 @@
-export type SeederNames = 'user' | 'post' | 'comment';
+export type SeederNames = 'user' | 'post' | 'comment' | 'tags';
 export type SeederDataList = { [k in SeederNames]: string[] };
 
 export default interface Seeder {

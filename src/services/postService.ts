@@ -2,6 +2,7 @@ import { prisma } from '../db/client';
 import MediaInput from '../types/mediaInput';
 import _ from 'lodash';
 import { cache } from './cacheService';
+import { isStringArray } from '../types/utilTypes';
 
 export namespace postService {
   export async function getPosts({
@@ -164,7 +165,7 @@ export namespace postService {
     userId,
     mainPostId,
   }: {
-    tags: String[];
+    tags: string[] | {id: string}[];
     content: string;
     userId: string;
     mainPostId?: string;
@@ -185,22 +186,28 @@ export namespace postService {
     });
 
     return await prisma.$transaction(async () => {
-      const postTags = await Promise.all(
-        tags.map(async (tag) => {
-          const lowerCaseTag = tag.toLowerCase();
-          const currentTag = await prisma.postTags.upsert({
-            update: {},
-            where: {
-              name: lowerCaseTag,
-            },
-            create: {
-              name: lowerCaseTag,
-            },
-          });
+      let postTags;
 
-          return { id: currentTag.id };
-        })
-      );
+      if (isStringArray(tags)) {
+        postTags = await Promise.all(
+          tags.map(async (tag) => {
+            const lowerCaseTag = tag.toLowerCase();
+            const currentTag = await prisma.postTags.upsert({
+              update: {},
+              where: {
+                name: lowerCaseTag,
+              },
+              create: {
+                name: lowerCaseTag,
+              },
+            });
+
+            return { id: currentTag.id };
+          })
+        );
+      } else {
+        postTags = tags;
+      }
 
       return await prisma.post.create({
         data: {

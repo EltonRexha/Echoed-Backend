@@ -16,7 +16,7 @@ export class PostSeeder implements Seeder {
     return post;
   }
 
-  private async seedPost(userId?: string, postId?: string) {
+  private async seedPost(tagsIds: string[], userId?: string, postId?: string) {
     if (!userId) {
       throw new Error('Seeder error: trying to create a post without a user');
     }
@@ -25,7 +25,7 @@ export class PostSeeder implements Seeder {
 
     const createPost = await postService.createPost({
       content: post.content,
-      tags: [],
+      tags: tagsIds.map((tag) => ({ id: tag })),
       userId: userId,
       mainPostId: post.mainPostId || undefined,
     });
@@ -38,6 +38,7 @@ export class PostSeeder implements Seeder {
     for (let i = 1; i <= amount; i++) {
       console.log(`Seeding post ${i}`);
       const postId = await this.seedPost(
+        _.sampleSize(prevSeedIds['tags'], _.random(0, 10)),
         _.sample(prevSeedIds['user']),
         Math.floor(Math.random() * 2) === 1 ? _.sample(ids) : undefined
       );
