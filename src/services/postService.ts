@@ -3,6 +3,7 @@ import MediaInput from '../types/mediaInput';
 import _ from 'lodash';
 import { cache } from './cacheService';
 import { isStringArray } from '../types/utilTypes';
+import { postRecommendationService } from './postRecommendationService';
 
 export namespace postService {
   export async function getPosts({
@@ -165,7 +166,7 @@ export namespace postService {
     userId,
     mainPostId,
   }: {
-    tags: string[] | {id: string}[];
+    tags: string[] | { id: string }[];
     content: string;
     userId: string;
     mainPostId?: string;
@@ -252,7 +253,13 @@ export namespace postService {
       },
       include: {
         author: true,
+        PostTags: true,
       },
+    });
+
+    //Add the post tags into preferred tags
+    updatedPost.PostTags.map(async (tag) => {
+      await postRecommendationService.addPreferredTag(tag.id, userId);
     });
 
     cache.invalidateCache({
@@ -288,7 +295,13 @@ export namespace postService {
       },
       include: {
         author: true,
+        PostTags: true,
       },
+    });
+
+    //Add the post tags into preferred tags
+    updatedPost.PostTags.map(async (tag) => {
+      await postRecommendationService.addPreferredTag(tag.id, userId);
     });
 
     cache.invalidateCache({

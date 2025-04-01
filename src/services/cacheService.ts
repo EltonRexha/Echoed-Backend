@@ -64,6 +64,32 @@ export interface KeyParams {
     page?: number;
     limit?: number;
   };
+  followingUsers: {
+    userId: string;
+  };
+  trendingPosts: {
+    amount?: string;
+    recentDate?: string;
+  };
+  trendingFollowingPosts: {
+    amount?: string;
+    recentDate?: string;
+    userId?: string;
+  };
+  trendingFromPreferredTagsPosts: {
+    amount?: string;
+    userId?: string;
+  };
+  userPreferredTags: {
+    userId?: string;
+    amount?: string;
+  };
+  forYouPosts: {
+    userId?: string;
+  };
+  followingPosts: {
+    userId?: string;
+  };
 }
 
 type KeyName = keyof KeyParams;

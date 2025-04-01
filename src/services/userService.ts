@@ -303,6 +303,27 @@ export namespace userService {
     return updatedUser;
   }
 
+  export async function getFollowingUsers({ userId }: { userId: string }) {
+    return cache.getOrSetCache({
+      cb: async () => {
+        return await prisma.user.findMany({
+          where: {
+            followers: {
+              some: {
+                id: userId,
+              },
+            },
+          },
+        });
+      },
+      cacheType: 'medium',
+      keyName: 'followingUsers',
+      keyParams: {
+        userId,
+      },
+    });
+  }
+
   /**
    * @param userId the user who got blocked
    * @param fromUserId the user who is blocking

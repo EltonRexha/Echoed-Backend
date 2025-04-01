@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon ./src/index.ts",
-    "seed": "ts-node ./src/seeds/mainSeeder.ts",
+    "seed": "ts-node ./src/seeders/mainSeeder.ts",
     "build": "tsc"
   },
   "prisma": {
