@@ -210,6 +210,39 @@ export namespace postRecommendationService {
 
   export function followingPosts() {}
 
+  export async function addPreferredTag(
+    tagId: string,
+    userId: string,
+    incrementAmount: number = 0.05
+  ) {
+    return await prisma.userPreferredTags.upsert({
+      where: {
+        userId_postTagsId: {
+          postTagsId: tagId,
+          userId: userId,
+        },
+      },
+      create: {
+        level: incrementAmount,
+        user: {
+          connect: {
+            id: userId,
+          },
+        },
+        tag: {
+          connect: {
+            id: tagId,
+          },
+        },
+      },
+      update: {
+        level: {
+          increment: incrementAmount,
+        },
+      },
+    });
+  }
+
   async function getUsersMostPreferredTags(userId: string, amount: number = 5) {
     return cache.getOrSetCache({
       cb: async () => {
