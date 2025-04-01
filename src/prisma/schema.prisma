@@ -42,6 +42,7 @@ model User {
   postComment           PostComment[]
   likedComments         PostComment[]           @relation(name: "likedBy")
   savedComments         PostComment[]           @relation(name: "savedBy")
+  preferredTags         UserPreferredTags[]
 
   @@index([email])
   @@index([username])
@@ -122,8 +123,9 @@ model PostTags {
   name  String @unique
   posts Post[]
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+  preferredBy UserPreferredTags[]
 
   @@map("post_tags")
 }
@@ -230,6 +232,17 @@ model UserVerificationToken {
   @@index([createdAt, userId])
   @@index([expiresAt])
   @@map("user_verification_tokens")
+}
+
+model UserPreferredTags {
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  tag        PostTags @relation(fields: [postTagsId], references: [id])
+  postTagsId String
+  level      Float
+
+  @@id([userId, postTagsId])
+  @@map("user_preferred_tags")
 }
 
 enum Roles {
