@@ -5,6 +5,8 @@
 
 import { Prisma } from '@prisma/client';
 
+
+
 /**
  * Standard post include pattern with all common relationships
  * Use this for queries that need complete post data with counts and author info
@@ -93,3 +95,32 @@ export const POST_TRENDING_ORDER_BY = [
     },
   },
 ];
+
+/**
+ * Get post include pattern with user status fields
+ * @param userId User ID to check like and save status against
+ * @returns Post include pattern with user status fields
+ */
+
+
+export function getPostIncludeWithUserStatus(userId: string) {
+  return {
+    ...POST_FULL_INCLUDE,
+    likedBy: {
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+      },
+    },
+    savedBy: {
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+      },
+    },
+  };
+}

@@ -6,6 +6,7 @@ import { subDays } from 'date-fns';
 import { cache } from './cacheService';
 import { userService } from './userService';
 import {
+  getPostIncludeWithUserStatus,
   POST_FULL_INCLUDE,
   POST_TRENDING_ORDER_BY,
 } from '../utils/postQueryPatterns';
@@ -21,6 +22,7 @@ const FOLLOWING_POST_AMOUNT = 100;
 
 export namespace postRecommendationService {
   export async function getTrendingPosts(
+    userId: string,
     amount: number,
     recentDate: Date = subDays(new Date(), 1)
   ) {
@@ -34,7 +36,7 @@ export namespace postRecommendationService {
           },
           orderBy: POST_TRENDING_ORDER_BY,
           take: amount,
-          include: POST_FULL_INCLUDE,
+          include: getPostIncludeWithUserStatus(userId),
         });
       },
       cacheType: 'medium',
@@ -68,7 +70,7 @@ export namespace postRecommendationService {
           },
           orderBy: POST_TRENDING_ORDER_BY,
           take: amount,
-          include: POST_FULL_INCLUDE,
+          include: getPostIncludeWithUserStatus(userId),
         });
       },
       cacheType: 'medium',
@@ -102,7 +104,7 @@ export namespace postRecommendationService {
           },
           orderBy: POST_TRENDING_ORDER_BY,
           take: amount,
-          include: POST_FULL_INCLUDE,
+          include: getPostIncludeWithUserStatus(userId),
         });
       },
       cacheType: 'medium',
@@ -151,7 +153,7 @@ export namespace postRecommendationService {
             if (choice === 'trending') {
               const choiceAmount = choicesPostAmount[choice];
 
-              await addTrendingPosts(forYouPosts, choiceAmount);
+              await addTrendingPosts(forYouPosts, choiceAmount, userId);
               continue;
             }
 
@@ -168,7 +170,7 @@ export namespace postRecommendationService {
               //Pick trending posts
               if (posts.length < choiceAmount) {
                 const rest = choiceAmount - posts.length;
-                await addTrendingPosts(forYouPosts, rest);
+                await addTrendingPosts(forYouPosts, rest, userId);
               }
 
               continue;
@@ -187,7 +189,7 @@ export namespace postRecommendationService {
               //Pick trending posts
               if (posts.length < choiceAmount) {
                 const rest = choiceAmount - posts.length;
-                await addTrendingPosts(forYouPosts, rest);
+                await addTrendingPosts(forYouPosts, rest, userId);
               }
 
               continue;
@@ -236,7 +238,7 @@ export namespace postRecommendationService {
             },
             orderBy: POST_TRENDING_ORDER_BY,
             take: FOLLOWING_POST_AMOUNT,
-            include: POST_FULL_INCLUDE,
+            include: getPostIncludeWithUserStatus(userId),
           });
         },
         cacheType: 'medium',
@@ -307,8 +309,8 @@ export namespace postRecommendationService {
     });
   }
 
-  async function addTrendingPosts(posts: Post[], amount: number) {
-    const preferredTags = await getTrendingPosts(amount);
+  async function addTrendingPosts(posts: Post[], amount: number, userId: string) {
+    const preferredTags = await getTrendingPosts(userId, amount);
 
     preferredTags.forEach((post) => {
       posts.push(post);
