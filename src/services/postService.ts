@@ -4,6 +4,11 @@ import _ from 'lodash';
 import { cache } from './cacheService';
 import { isStringArray } from '../types/utilTypes';
 import { postRecommendationService } from './postRecommendationService';
+import {
+  POST_BASIC_INCLUDE,
+  POST_FULL_INCLUDE,
+  POST_TRENDING_ORDER_BY,
+} from '../utils/postQueryPatterns';
 
 export namespace postService {
   export async function getPosts({
@@ -70,15 +75,7 @@ export namespace postService {
               },
             }),
           },
-          include: {
-            MainPost: true,
-            Media: true,
-            PostTags: {
-              select: {
-                name: true,
-              },
-            },
-          },
+          include: POST_BASIC_INCLUDE,
           skip,
           take: limit,
         });
@@ -111,9 +108,7 @@ export namespace postService {
           where: {
             id: postId,
           },
-          include: {
-            Media: true,
-          },
+          include: POST_BASIC_INCLUDE,
         });
       },
       cacheType: 'short',

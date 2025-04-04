@@ -7,7 +7,7 @@ import { postService } from '../services/postService';
 export class PostSeeder implements Seeder {
   private generatePost(userId: string, mainPostId?: string) {
     const post: Omit<Post, 'id' | 'createdAt' | 'updatedAt'> = {
-      content: faker.lorem.paragraphs({ min: 3, max: 10 }),
+      content: faker.lorem.paragraphs({ min: 2, max: 4 }),
       mainPostId: mainPostId || null,
       userId,
     };

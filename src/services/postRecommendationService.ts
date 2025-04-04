@@ -5,6 +5,10 @@ import _ from 'lodash';
 import { subDays } from 'date-fns';
 import { cache } from './cacheService';
 import { userService } from './userService';
+import {
+  POST_FULL_INCLUDE,
+  POST_TRENDING_ORDER_BY,
+} from '../utils/postQueryPatterns';
 
 const FOR_YOU_WEIGHTS = {
   preferredTags: 0.4,
@@ -28,37 +32,9 @@ export namespace postRecommendationService {
               gt: recentDate,
             },
           },
-          orderBy: [
-            {
-              likedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              savedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              Reposts: {
-                _count: 'desc',
-              },
-            },
-            {
-              postComments: {
-                _count: 'desc',
-              },
-            },
-          ],
+          orderBy: POST_TRENDING_ORDER_BY,
           take: amount,
-          include: {
-            PostTags: {
-              select: {
-                name: true,
-                id: true,
-              },
-            },
-          },
+          include: POST_FULL_INCLUDE,
         });
       },
       cacheType: 'medium',
@@ -90,37 +66,9 @@ export namespace postRecommendationService {
               },
             },
           },
-          orderBy: [
-            {
-              likedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              savedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              Reposts: {
-                _count: 'desc',
-              },
-            },
-            {
-              postComments: {
-                _count: 'desc',
-              },
-            },
-          ],
+          orderBy: POST_TRENDING_ORDER_BY,
           take: amount,
-          include: {
-            PostTags: {
-              select: {
-                name: true,
-                id: true,
-              },
-            },
-          },
+          include: POST_FULL_INCLUDE,
         });
       },
       cacheType: 'medium',
@@ -152,37 +100,9 @@ export namespace postRecommendationService {
               },
             },
           },
-          orderBy: [
-            {
-              likedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              savedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              Reposts: {
-                _count: 'desc',
-              },
-            },
-            {
-              postComments: {
-                _count: 'desc',
-              },
-            },
-          ],
+          orderBy: POST_TRENDING_ORDER_BY,
           take: amount,
-          include: {
-            PostTags: {
-              select: {
-                name: true,
-                id: true,
-              },
-            },
-          },
+          include: POST_FULL_INCLUDE,
         });
       },
       cacheType: 'medium',
@@ -314,29 +234,9 @@ export namespace postRecommendationService {
                 },
               },
             },
-            orderBy: [
-              {
-                likedBy: {
-                  _count: 'desc',
-                },
-              },
-              {
-                savedBy: {
-                  _count: 'desc',
-                },
-              },
-              {
-                Reposts: {
-                  _count: 'desc',
-                },
-              },
-              {
-                postComments: {
-                  _count: 'desc',
-                },
-              },
-            ],
+            orderBy: POST_TRENDING_ORDER_BY,
             take: FOLLOWING_POST_AMOUNT,
+            include: POST_FULL_INCLUDE,
           });
         },
         cacheType: 'medium',
