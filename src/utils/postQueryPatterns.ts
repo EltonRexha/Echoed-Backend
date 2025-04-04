@@ -5,8 +5,6 @@
 
 import { Prisma } from '@prisma/client';
 
-
-
 /**
  * Standard post include pattern with all common relationships
  * Use this for queries that need complete post data with counts and author info
@@ -97,12 +95,11 @@ export const POST_TRENDING_ORDER_BY = [
 ];
 
 /**
- * Get post include pattern with user status fields
- * @param userId User ID to check like and save status against
- * @returns Post include pattern with user status fields
+ * Get include pattern with user interaction status check
+ *
+ * @param userId User ID to check interactions against
+ * @returns Include pattern with filtered likedBy and savedBy arrays
  */
-
-
 export function getPostIncludeWithUserStatus(userId: string) {
   return {
     ...POST_FULL_INCLUDE,
@@ -123,4 +120,21 @@ export function getPostIncludeWithUserStatus(userId: string) {
       },
     },
   };
+}
+
+/**
+ * Add user interaction boolean flags to post objects
+ *
+ * @param posts Posts with likedBy and savedBy arrays filtered by user ID
+ * @returns Posts with isLiked and isSaved boolean flags
+ */
+export function addUserInteractionFlags(posts: any[]) {
+  return posts.map((post) => ({
+    ...post,
+    isLiked: post.likedBy && post.likedBy.length > 0,
+    isSaved: post.savedBy && post.savedBy.length > 0,
+    // Remove arrays to clean up the response if desired
+    likedBy: undefined,
+    savedBy: undefined
+  }));
 }

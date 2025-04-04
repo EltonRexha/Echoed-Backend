@@ -9,6 +9,7 @@ import {
   getPostIncludeWithUserStatus,
   POST_FULL_INCLUDE,
   POST_TRENDING_ORDER_BY,
+  addUserInteractionFlags,
 } from '../utils/postQueryPatterns';
 
 const FOR_YOU_WEIGHTS = {
@@ -22,13 +23,13 @@ const FOLLOWING_POST_AMOUNT = 100;
 
 export namespace postRecommendationService {
   export async function getTrendingPosts(
-    userId: string,
     amount: number,
-    recentDate: Date = subDays(new Date(), 1)
+    recentDate: Date = subDays(new Date(), 1),
+    userId: string
   ) {
     return cache.getOrSetCache({
       cb: async () => {
-        return await prisma.post.findMany({
+        const posts = await prisma.post.findMany({
           where: {
             createdAt: {
               gt: recentDate,
@@ -38,13 +39,16 @@ export namespace postRecommendationService {
           take: amount,
           include: getPostIncludeWithUserStatus(userId),
         });
+
+        return userId ? addUserInteractionFlags(posts) : posts;
       },
       cacheType: 'medium',
       keyName: 'trendingPosts',
       keyParams: {
         amount: amount.toString(),
         recentDate: recentDate.toString(),
-      },
+        userId: userId || 'none',
+      } as Record<string, string>,
     });
   }
 
@@ -309,10 +313,14 @@ export namespace postRecommendationService {
     });
   }
 
-  async function addTrendingPosts(posts: Post[], amount: number, userId: string) {
-    const preferredTags = await getTrendingPosts(userId, amount);
+  async function addTrendingPosts(
+    posts: Post[],
+    amount: number,
+    userId: string
+  ) {
+    const preferredTags = await getTrendingPosts(amount, undefined, userId);
 
-    preferredTags.forEach((post) => {
+    preferredTags.forEach((post: any) => {
       posts.push(post);
     });
 
