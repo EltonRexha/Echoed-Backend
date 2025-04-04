@@ -5,6 +5,12 @@ import _ from 'lodash';
 import { subDays } from 'date-fns';
 import { cache } from './cacheService';
 import { userService } from './userService';
+import {
+  getPostIncludeWithUserStatus,
+  POST_FULL_INCLUDE,
+  POST_TRENDING_ORDER_BY,
+  addUserInteractionFlags,
+} from '../utils/postQueryPatterns';
 
 const FOR_YOU_WEIGHTS = {
   preferredTags: 0.4,
@@ -18,55 +24,31 @@ const FOLLOWING_POST_AMOUNT = 100;
 export namespace postRecommendationService {
   export async function getTrendingPosts(
     amount: number,
-    recentDate: Date = subDays(new Date(), 1)
+    recentDate: Date = subDays(new Date(), 1),
+    userId: string
   ) {
     return cache.getOrSetCache({
       cb: async () => {
-        return await prisma.post.findMany({
+        const posts = await prisma.post.findMany({
           where: {
             createdAt: {
               gt: recentDate,
             },
           },
-          orderBy: [
-            {
-              likedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              savedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              Reposts: {
-                _count: 'desc',
-              },
-            },
-            {
-              postComments: {
-                _count: 'desc',
-              },
-            },
-          ],
+          orderBy: POST_TRENDING_ORDER_BY,
           take: amount,
-          include: {
-            PostTags: {
-              select: {
-                name: true,
-                id: true,
-              },
-            },
-          },
+          include: getPostIncludeWithUserStatus(userId),
         });
+
+        return userId ? addUserInteractionFlags(posts) : posts;
       },
       cacheType: 'medium',
       keyName: 'trendingPosts',
       keyParams: {
         amount: amount.toString(),
         recentDate: recentDate.toString(),
-      },
+        userId: userId || 'none',
+      } as Record<string, string>,
     });
   }
 
@@ -90,37 +72,9 @@ export namespace postRecommendationService {
               },
             },
           },
-          orderBy: [
-            {
-              likedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              savedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              Reposts: {
-                _count: 'desc',
-              },
-            },
-            {
-              postComments: {
-                _count: 'desc',
-              },
-            },
-          ],
+          orderBy: POST_TRENDING_ORDER_BY,
           take: amount,
-          include: {
-            PostTags: {
-              select: {
-                name: true,
-                id: true,
-              },
-            },
-          },
+          include: getPostIncludeWithUserStatus(userId),
         });
       },
       cacheType: 'medium',
@@ -152,37 +106,9 @@ export namespace postRecommendationService {
               },
             },
           },
-          orderBy: [
-            {
-              likedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              savedBy: {
-                _count: 'desc',
-              },
-            },
-            {
-              Reposts: {
-                _count: 'desc',
-              },
-            },
-            {
-              postComments: {
-                _count: 'desc',
-              },
-            },
-          ],
+          orderBy: POST_TRENDING_ORDER_BY,
           take: amount,
-          include: {
-            PostTags: {
-              select: {
-                name: true,
-                id: true,
-              },
-            },
-          },
+          include: getPostIncludeWithUserStatus(userId),
         });
       },
       cacheType: 'medium',
@@ -231,7 +157,7 @@ export namespace postRecommendationService {
             if (choice === 'trending') {
               const choiceAmount = choicesPostAmount[choice];
 
-              await addTrendingPosts(forYouPosts, choiceAmount);
+              await addTrendingPosts(forYouPosts, choiceAmount, userId);
               continue;
             }
 
@@ -248,7 +174,7 @@ export namespace postRecommendationService {
               //Pick trending posts
               if (posts.length < choiceAmount) {
                 const rest = choiceAmount - posts.length;
-                await addTrendingPosts(forYouPosts, rest);
+                await addTrendingPosts(forYouPosts, rest, userId);
               }
 
               continue;
@@ -267,7 +193,7 @@ export namespace postRecommendationService {
               //Pick trending posts
               if (posts.length < choiceAmount) {
                 const rest = choiceAmount - posts.length;
-                await addTrendingPosts(forYouPosts, rest);
+                await addTrendingPosts(forYouPosts, rest, userId);
               }
 
               continue;
@@ -314,29 +240,9 @@ export namespace postRecommendationService {
                 },
               },
             },
-            orderBy: [
-              {
-                likedBy: {
-                  _count: 'desc',
-                },
-              },
-              {
-                savedBy: {
-                  _count: 'desc',
-                },
-              },
-              {
-                Reposts: {
-                  _count: 'desc',
-                },
-              },
-              {
-                postComments: {
-                  _count: 'desc',
-                },
-              },
-            ],
+            orderBy: POST_TRENDING_ORDER_BY,
             take: FOLLOWING_POST_AMOUNT,
+            include: getPostIncludeWithUserStatus(userId),
           });
         },
         cacheType: 'medium',
@@ -407,10 +313,14 @@ export namespace postRecommendationService {
     });
   }
 
-  async function addTrendingPosts(posts: Post[], amount: number) {
-    const preferredTags = await getTrendingPosts(amount);
+  async function addTrendingPosts(
+    posts: Post[],
+    amount: number,
+    userId: string
+  ) {
+    const preferredTags = await getTrendingPosts(amount, undefined, userId);
 
-    preferredTags.forEach((post) => {
+    preferredTags.forEach((post: any) => {
       posts.push(post);
     });
 
