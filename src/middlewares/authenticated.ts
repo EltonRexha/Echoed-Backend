@@ -48,8 +48,8 @@ export default asyncHandler(async function (
 
     const [localUser, googleUser, githubUser] = await Promise.all([
       userService.getLocalUser({ id: userId }),
-      userService.getGoogleUser({ googleUserId: userId }),
-      userService.getGithubUser({ githubUserId: userId }),
+      userService.getGoogleUser({ id: userId }),
+      userService.getGithubUser({ id: userId }),
     ]);
 
     const user = localUser || googleUser || githubUser;

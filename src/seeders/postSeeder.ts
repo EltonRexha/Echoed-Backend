@@ -20,7 +20,8 @@ export class PostSeeder implements Seeder {
     userId?: string,
     mainPostId?: string,
     likedByUsersIds?: string[],
-    savedByUserIds?: string[]
+    savedByUserIds?: string[],
+    addMedia?: boolean
   ) {
     if (!userId) {
       throw new Error('Seeder error: trying to create a post without a user');
@@ -49,6 +50,20 @@ export class PostSeeder implements Seeder {
           await postService.savePost({ userId, postId: createPost.id });
         })
       );
+    }
+
+    if (addMedia) {
+      const mediaLength = _.random(0, 3);
+      for (let i = 0; i < mediaLength; i++) {
+        await postService.addMediaToPost({
+          id: createPost.id,
+          media: {
+            mimetype: 'image/jpeg',
+            size: 1000,
+            cloudinaryPath: faker.image.url(),
+          },
+        });
+      }
     }
 
     return createPost.id;
