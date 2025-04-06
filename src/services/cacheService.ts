@@ -67,19 +67,6 @@ export interface KeyParams {
   followingUsers: {
     userId: string;
   };
-  trendingPosts: {
-    amount?: string;
-    recentDate?: string;
-  };
-  trendingFollowingPosts: {
-    amount?: string;
-    recentDate?: string;
-    userId?: string;
-  };
-  trendingFromPreferredTagsPosts: {
-    amount?: string;
-    userId?: string;
-  };
   userPreferredTags: {
     userId?: string;
     amount?: string;

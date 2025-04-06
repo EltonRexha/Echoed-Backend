@@ -231,24 +231,14 @@ export namespace userService {
     email?: string;
     options?: Omit<Prisma.GoogleUserFindFirstArgs, 'where'>;
   }) {
-    return cache.getOrSetCache({
-      cb: async () => {
-        return await prisma.googleUser.findFirst({
-          where: {
-            ...(email && { email: { contains: email, mode: 'insensitive' } }),
-            ...(googleUserId && { googleUserId }),
-            ...(id && { id }),
-          },
-          include: {
-            user: true,
-          },
-        });
+    return await prisma.googleUser.findFirst({
+      where: {
+        ...(email && { email: { contains: email, mode: 'insensitive' } }),
+        ...(googleUserId && { googleUserId }),
+        ...(id && { id }),
       },
-      cacheType: 'medium',
-      keyName: 'user',
-      keyParams: {
-        id,
-        email,
+      include: {
+        user: true,
       },
     });
   }
@@ -260,23 +250,14 @@ export namespace userService {
     githubUserId?: string;
     id?: string;
   }) {
-    return cache.getOrSetCache({
-      cb: async () => {
-        return await prisma.githubUser.findFirst({
-          where: {
-            ...(githubUserId && { githubUserId: githubUserId }),
-            ...(githubUserId && { githubUserId: githubUserId }),
-            ...(id && { id }),
-          },
-          include: {
-            user: true,
-          },
-        });
+    return await prisma.githubUser.findFirst({
+      where: {
+        ...(githubUserId && { githubUserId: githubUserId }),
+        ...(githubUserId && { githubUserId: githubUserId }),
+        ...(id && { id }),
       },
-      cacheType: 'medium',
-      keyName: 'user',
-      keyParams: {
-        id,
+      include: {
+        user: true,
       },
     });
   }

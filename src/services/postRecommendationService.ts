@@ -27,29 +27,18 @@ export namespace postRecommendationService {
     recentDate: Date = subDays(new Date(), 1),
     userId: string
   ) {
-    return cache.getOrSetCache({
-      cb: async () => {
-        const posts = await prisma.post.findMany({
-          where: {
-            createdAt: {
-              gt: recentDate,
-            },
-          },
-          orderBy: POST_TRENDING_ORDER_BY,
-          take: amount,
-          include: getPostIncludeWithUserStatus(userId),
-        });
-
-        return userId ? addUserInteractionFlags(posts) : posts;
+    const posts = await prisma.post.findMany({
+      where: {
+        createdAt: {
+          gt: recentDate,
+        },
       },
-      cacheType: 'medium',
-      keyName: 'trendingPosts',
-      keyParams: {
-        amount: amount.toString(),
-        recentDate: recentDate.toString(),
-        userId: userId || 'none',
-      } as Record<string, string>,
+      orderBy: POST_TRENDING_ORDER_BY,
+      take: amount,
+      include: getPostIncludeWithUserStatus(userId),
     });
+
+    return userId ? addUserInteractionFlags(posts) : posts;
   }
 
   export async function getTrendingFollowingPosts(
@@ -57,33 +46,22 @@ export namespace postRecommendationService {
     userId: string,
     recentDate: Date = subDays(new Date(), 1)
   ) {
-    return cache.getOrSetCache({
-      cb: async () => {
-        return await prisma.post.findMany({
-          where: {
-            createdAt: {
-              gt: recentDate,
-            },
-            author: {
-              followers: {
-                some: {
-                  id: userId,
-                },
-              },
+    return await prisma.post.findMany({
+      where: {
+        createdAt: {
+          gt: recentDate,
+        },
+        author: {
+          followers: {
+            some: {
+              id: userId,
             },
           },
-          orderBy: POST_TRENDING_ORDER_BY,
-          take: amount,
-          include: getPostIncludeWithUserStatus(userId),
-        });
+        },
       },
-      cacheType: 'medium',
-      keyName: 'trendingFollowingPosts',
-      keyParams: {
-        userId,
-        amount: amount.toString(),
-        recentDate: recentDate.toString(),
-      },
+      orderBy: POST_TRENDING_ORDER_BY,
+      take: amount,
+      include: getPostIncludeWithUserStatus(userId),
     });
   }
 
@@ -91,129 +69,142 @@ export namespace postRecommendationService {
     amount: number,
     userId: string
   ) {
-    return cache.getOrSetCache({
+    const mostPreferredTags = await getUsersMostPreferredTags(userId, amount);
+
+    return await prisma.post.findMany({
+      where: {
+        PostTags: {
+          some: {
+            OR: mostPreferredTags.map((tag) => ({ id: tag.postTagsId })),
+          },
+        },
+      },
+      orderBy: POST_TRENDING_ORDER_BY,
+      take: amount,
+      include: getPostIncludeWithUserStatus(userId),
+    });
+  }
+
+  async function getForYouPostsFromCache(
+    userId: string,
+    choicesAmount = FOR_YOUR_CHOICES_AMOUNT
+  ) {
+    const posts = await cache.getOrSetCache({
       cb: async () => {
-        const mostPreferredTags = await getUsersMostPreferredTags(
-          userId,
-          amount
+        const forYouPosts: Post[] = [];
+
+        //Get random set of choices based on weights
+        const choicesPostAmount = weightedSelection(
+          FOR_YOU_WEIGHTS,
+          choicesAmount
         );
 
-        return await prisma.post.findMany({
-          where: {
-            PostTags: {
-              some: {
-                OR: mostPreferredTags.map((tag) => ({ id: tag.postTagsId })),
-              },
-            },
-          },
-          orderBy: POST_TRENDING_ORDER_BY,
-          take: amount,
-          include: getPostIncludeWithUserStatus(userId),
-        });
+        for (const k in choicesPostAmount) {
+          const choice = k as keyof typeof choicesPostAmount;
+
+          if (choice === 'trending') {
+            const choiceAmount = choicesPostAmount[choice];
+
+            await addTrendingPosts(forYouPosts, choiceAmount, userId);
+            continue;
+          }
+
+          if (choice === 'following') {
+            const choiceAmount = choicesPostAmount[choice];
+
+            const posts = await addTrendingFromFollowingPosts(
+              forYouPosts,
+              choiceAmount,
+              userId
+            );
+
+            //For some reason could not get the amount required
+            //Pick trending posts
+            if (posts.length < choiceAmount) {
+              const rest = choiceAmount - posts.length;
+              await addTrendingPosts(forYouPosts, rest, userId);
+            }
+
+            continue;
+          }
+
+          if (choice === 'preferredTags') {
+            const choiceAmount = choicesPostAmount[choice];
+
+            const posts = await addPreferredTagsPosts(
+              forYouPosts,
+              choiceAmount,
+              userId
+            );
+
+            //For some reason could not get the amount required
+            //Pick trending posts
+            if (posts.length < choiceAmount) {
+              const rest = choiceAmount - posts.length;
+              await addTrendingPosts(forYouPosts, rest, userId);
+            }
+
+            continue;
+          }
+
+          const _exhaustiveCheck: never = choice;
+          throw new Error('Unsupported recommendation method');
+        }
+
+        return _.shuffle(forYouPosts);
       },
       cacheType: 'medium',
-      keyName: 'trendingFromPreferredTagsPosts',
+      keyName: 'forYouPosts',
       keyParams: {
-        amount: amount.toString(),
-        userId: userId.toString(),
+        userId,
       },
     });
+
+    return posts;
   }
 
   /**
    * Uses multiple factors to recommend posts to user and caches them
    * Then uses the pagination to go through the cached posts
-   *
-   *
-   *
-   *
    */
   export async function forYouPosts({
     userId,
     page = 1,
     limit = 10,
+    calledInternally = false,
+    choicesAmount = FOR_YOUR_CHOICES_AMOUNT,
   }: {
     userId: string;
     page?: number;
     limit?: number;
+    calledInternally?: boolean;
+    choicesAmount?: number;
   }) {
     const skip = (page - 1) * limit;
 
     //Get up to some amount posts
-    const posts = _.shuffle(
-      await cache.getOrSetCache({
-        cb: async () => {
-          const forYouPosts: Post[] = [];
+    const posts = await getForYouPostsFromCache(userId, choicesAmount);
 
-          //Get random set of choices based on weights
-          const choicesPostAmount = weightedSelection(
-            FOR_YOU_WEIGHTS,
-            FOR_YOUR_CHOICES_AMOUNT
-          );
+    const slicedPosts = _.slice(posts, skip, skip + limit);
 
-          for (const k in choicesPostAmount) {
-            const choice = k as keyof typeof choicesPostAmount;
-
-            if (choice === 'trending') {
-              const choiceAmount = choicesPostAmount[choice];
-
-              await addTrendingPosts(forYouPosts, choiceAmount, userId);
-              continue;
-            }
-
-            if (choice === 'following') {
-              const choiceAmount = choicesPostAmount[choice];
-
-              const posts = await addTrendingFromFollowingPosts(
-                forYouPosts,
-                choiceAmount,
-                userId
-              );
-
-              //For some reason could not get the amount required
-              //Pick trending posts
-              if (posts.length < choiceAmount) {
-                const rest = choiceAmount - posts.length;
-                await addTrendingPosts(forYouPosts, rest, userId);
-              }
-
-              continue;
-            }
-
-            if (choice === 'preferredTags') {
-              const choiceAmount = choicesPostAmount[choice];
-
-              const posts = await addPreferredTagsPosts(
-                forYouPosts,
-                choiceAmount,
-                userId
-              );
-
-              //For some reason could not get the amount required
-              //Pick trending posts
-              if (posts.length < choiceAmount) {
-                const rest = choiceAmount - posts.length;
-                await addTrendingPosts(forYouPosts, rest, userId);
-              }
-
-              continue;
-            }
-
-            const _exhaustiveCheck: never = choice;
-            throw new Error('Unsupported recommendation method');
-          }
-
-          return forYouPosts;
-        },
-        cacheType: 'medium',
+    if (slicedPosts.length === 0 && !calledInternally) {
+      await cache.invalidateCache({
         keyName: 'forYouPosts',
         keyParams: {
           userId,
         },
-      })
-    );
+      });
 
-    return { posts: _.slice(posts, skip, skip + limit), page };
+      return await forYouPosts({
+        userId,
+        page,
+        limit,
+        calledInternally: true,
+        choicesAmount: choicesAmount * 2,
+      });
+    }
+
+    return { posts: slicedPosts, page };
   }
 
   export async function followingPosts({
