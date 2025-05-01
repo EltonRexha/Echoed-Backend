@@ -7,7 +7,6 @@ import { cache } from './cacheService';
 import { userService } from './userService';
 import {
   getPostIncludeWithUserStatus,
-  POST_FULL_INCLUDE,
   POST_TRENDING_ORDER_BY,
   addUserInteractionFlags,
 } from '../utils/postQueryPatterns';
@@ -18,8 +17,8 @@ const FOR_YOU_WEIGHTS = {
   trending: 0.3,
 } as const;
 
-const FOR_YOUR_CHOICES_AMOUNT = 100;
-const FOLLOWING_POST_AMOUNT = 100;
+const FOR_YOUR_CHOICES_AMOUNT = 500;
+const FOLLOWING_POST_AMOUNT = 500;
 const DEFAULT_POSTS_TIME_WINDOW_DAYS = 7; // One week default time window
 
 export namespace postRecommendationService {
@@ -336,6 +335,23 @@ export namespace postRecommendationService {
     const posts = await getForYouPostsFromCache({ userId, choicesAmount });
 
     const slicedPosts = _.slice(posts, skip, skip + limit);
+
+    if (slicedPosts.length === 0 && !calledInternally) {
+      await cache.invalidateCache({
+        keyName: 'forYouPosts',
+        keyParams: {
+          userId,
+        },
+      });
+
+      return await forYouPosts({
+        userId,
+        page,
+        limit,
+        calledInternally: true,
+        choicesAmount: choicesAmount * 2,
+      });
+    }
 
     return { posts: slicedPosts, page };
   }
