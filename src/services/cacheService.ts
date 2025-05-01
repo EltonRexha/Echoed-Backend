@@ -73,6 +73,8 @@ export interface KeyParams {
   };
   forYouPosts: {
     userId?: string;
+    page?: string;
+    limit?: string;
   };
   followingPosts: {
     userId?: string;

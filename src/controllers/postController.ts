@@ -12,6 +12,7 @@ import forbiddenError from '../errors/errorTypes/forbiddenError';
 import getPostSchema from '../validations/getPostSchema';
 import { postService } from '../services/postService';
 import { uploadFiles } from '../services/uploadFilesService';
+import { prisma } from '../db/client';
 
 const MAX_MEDIA_UPLOAD = 3;
 
@@ -261,6 +262,7 @@ export const likePost = asyncHandler(
     const user = req.user as LocalUser;
 
     const { postId } = req.params;
+    const { like } = req.body;
 
     const post = await postService.getPost({ postId: postId });
 
@@ -276,11 +278,19 @@ export const likePost = asyncHandler(
       return;
     }
 
-    postService.likePost({ userId: user.id, postId });
+    if (like) {
+      postService.likePost({ userId: user.id, postId });
 
-    res.status(200).json({
-      message: 'Successfully liked post',
-    });
+      res.status(200).json({
+        message: 'Successfully liked post',
+      });
+    } else {
+      postService.removeLikePost({ userId: user.id, postId });
+
+      res.status(200).json({
+        message: 'Successfully removed liked post',
+      });
+    }
   }
 );
 
