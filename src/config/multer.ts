@@ -9,9 +9,11 @@ const allowedImageTypes = [
 ];
 const allowedVideoTypes = ['video/mp4'];
 
+export const tmpFolder = path.join(__dirname, '../..', '/tmp/uploads');
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../..', '/tmp/uploads'));
+    cb(null, tmpFolder);
   },
   filename: function (req, file, cb) {
     const fileExtension = path.extname(file.originalname);
