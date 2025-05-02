@@ -3,6 +3,13 @@ import { faker } from '@faker-js/faker';
 import Seeder, { SeederDataList } from '../types/seeder.interface';
 import _ from 'lodash';
 import { postService } from '../services/postService';
+import axios from 'axios';
+import { uploadFiles } from '../services/uploadFilesService';
+import * as path from 'path';
+import * as fs from 'fs';
+import { writeFile } from 'fs/promises';
+import { tmpFolder } from '../config/multer';
+import { v4 as uuid } from 'uuid';
 
 export class PostSeeder implements Seeder {
   private generatePost(userId: string, mainPostId?: string) {
@@ -13,6 +20,42 @@ export class PostSeeder implements Seeder {
     };
 
     return post;
+  }
+
+  private async fetchPlaceholderImage(): Promise<Express.Multer.File> {
+    try {
+      const width = _.random(300, 800);
+      const height = _.random(300, 800);
+
+      const randomSeed = _.random(1, 100);
+
+      const imageUrl = `https://picsum.photos/seed/${randomSeed}/${width}/${height}`;
+      const response = await axios.get(imageUrl, {
+        responseType: 'arraybuffer',
+      });
+
+      const tmpFilePath = path.join(tmpFolder, `file_${uuid()}.jpg`);
+
+      await writeFile(tmpFilePath, Buffer.from(response.data as ArrayBuffer));
+
+      const file: Express.Multer.File = {
+        fieldname: 'image',
+        originalname: `seed-image-${randomSeed}.jpg`,
+        encoding: '7bit',
+        mimetype: 'image/jpeg',
+        destination: tmpFolder,
+        filename: path.basename(tmpFilePath),
+        path: tmpFilePath,
+        size: Buffer.from(response.data as ArrayBuffer).length,
+        buffer: Buffer.from(response.data as ArrayBuffer),
+        stream: fs.createReadStream(tmpFilePath),
+      } as any;
+
+      return file;
+    } catch (error) {
+      console.error('Error fetching placeholder image:', error);
+      throw error;
+    }
   }
 
   private async seedPost(
@@ -54,15 +97,28 @@ export class PostSeeder implements Seeder {
 
     if (addMedia) {
       const mediaLength = _.random(0, 3);
-      for (let i = 0; i < mediaLength; i++) {
-        await postService.addMediaToPost({
-          id: createPost.id,
-          media: {
-            mimetype: 'image/jpeg',
-            size: 1000,
-            cloudinaryPath: faker.image.url(),
-          },
-        });
+      console.log(`Fetching ${mediaLength} images`);
+      try {
+        for (let i = 0; i < mediaLength; i++) {
+
+          console.log(`Fetching image ${i + 1}`);
+          const imageFile = await this.fetchPlaceholderImage();
+          console.log(`Fetching image ${i + 1} done`);
+
+          console.log(`uploading image ${i + 1}`);
+
+          await uploadFiles.post({
+            files: [imageFile],
+            postId: createPost.id,
+            userId: userId,
+          });
+
+          console.log(`uploading image ${i + 1} done`);
+        }
+        console.log(`Fetching ${mediaLength} images`);
+      } catch (error) {
+        console.error('Error adding media to post:', error);
+        // Continue with post creation even if media upload fails
       }
     }
 
@@ -80,7 +136,8 @@ export class PostSeeder implements Seeder {
         _.sample(prevUserIds),
         Math.floor(Math.random() * 2) === 1 ? _.sample(ids) : undefined,
         _.sampleSize(prevUserIds, _.random(0, prevUserIds.length)),
-        _.sampleSize(prevUserIds, _.random(0, prevUserIds.length))
+        _.sampleSize(prevUserIds, _.random(0, prevUserIds.length)),
+        true // Always add media to make sure images are uploaded
       );
       ids.push(postId);
     }

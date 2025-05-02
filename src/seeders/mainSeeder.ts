@@ -4,6 +4,9 @@ import { CommentSeeder } from './commentSeeder';
 import { PostSeeder } from './postSeeder';
 import { TagSeeder } from './tagSeeder';
 import { UserSeeder } from './userSeeder';
+import cloudinaryConfig from '../config/cloudinary';
+
+cloudinaryConfig();
 
 const userSeeder = new UserSeeder();
 const postSeeder = new PostSeeder();
