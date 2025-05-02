@@ -314,13 +314,6 @@ export namespace postService {
       },
     });
 
-    cache.invalidateCache({
-      keyName: 'forYouPosts',
-      keyParams: {
-        userId: userId,
-      },
-    });
-
     return updatedPost;
   }
 
@@ -354,6 +347,43 @@ export namespace postService {
         tagId: tag.id,
         userId,
       });
+    });
+
+    cache.invalidateCache({
+      keyName: 'post',
+      keyParams: {
+        authorEmail: updatedPost.author.email,
+        authorId: updatedPost.author.id,
+        authorUsername: updatedPost.author.username,
+        postId: updatedPost.id,
+      },
+    });
+
+    return updatedPost;
+  }
+
+  export async function removeSavePost({
+    userId,
+    postId,
+  }: {
+    userId: string;
+    postId: string;
+  }) {
+    const updatedPost = await prisma.post.update({
+      where: {
+        id: postId,
+      },
+      data: {
+        savedBy: {
+          disconnect: {
+            id: userId,
+          },
+        },
+      },
+      include: {
+        author: true,
+        PostTags: true,
+      },
     });
 
     cache.invalidateCache({

@@ -13,6 +13,7 @@ import getPostSchema from '../validations/getPostSchema';
 import { postService } from '../services/postService';
 import { uploadFiles } from '../services/uploadFilesService';
 import { prisma } from '../db/client';
+import { z } from 'zod';
 
 const MAX_MEDIA_UPLOAD = 3;
 
@@ -259,10 +260,13 @@ export const uploadPostVideo = [
 
 export const likePost = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
+    const schema = z.object({
+      like: z.boolean(),
+    });
     const user = req.user as LocalUser;
 
     const { postId } = req.params;
-    const { like } = req.body;
+    const { like } = schema.parse(req.body);
 
     const post = await postService.getPost({ postId: postId });
 
@@ -284,21 +288,27 @@ export const likePost = asyncHandler(
       res.status(200).json({
         message: 'Successfully liked post',
       });
-    } else {
-      postService.removeLikePost({ userId: user.id, postId });
 
-      res.status(200).json({
-        message: 'Successfully removed liked post',
-      });
+      return;
     }
+
+    postService.removeLikePost({ userId: user.id, postId });
+
+    res.status(200).json({
+      message: 'Successfully removed liked post',
+    });
   }
 );
 
 export const savePost = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const user = req.user as LocalUser;
+    const schema = z.object({
+      save: z.boolean(),
+    });
 
     const { postId } = req.params;
+    const { save } = schema.parse(req.body);
 
     const post = await postService.getPost({ postId: postId });
 
@@ -314,10 +324,19 @@ export const savePost = asyncHandler(
       return;
     }
 
-    postService.savePost({ userId: user.id, postId });
+    if (save) {
+      postService.savePost({ userId: user.id, postId });
+
+      res.status(200).json({
+        message: 'Successfully saved post',
+      });
+      return;
+    }
+
+    postService.removeSavePost({ userId: user.id, postId });
 
     res.status(200).json({
-      message: 'Successfully saved post',
+      message: 'Successfully removed save from post',
     });
   }
 );
