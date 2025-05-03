@@ -17,8 +17,9 @@ async function uploadItem({
 }) {
   await Promise.all(
     files.map(async (file) => {
+      const publicId = `/file_${Date.now()}`;
       const filePath = file.path;
-      const fileName = `/file_${Date.now()}${path
+      const fileName = `/${publicId}${path
         .extname(file.originalname)
         .toLowerCase()}`;
 
@@ -34,7 +35,7 @@ async function uploadItem({
       const storedFile = await readFile(filePath);
       await uploadStreamToCloudinary(storedFile, {
         folder: cloudinaryPath,
-        public_id: `file_${Date.now()}`,
+        public_id: publicId,
         resource_type: resourceType,
       });
 
@@ -60,12 +61,13 @@ export namespace uploadFiles {
       files,
       uploadCb: async (file, fileName) => {
         try {
+          console.log(cloudinaryPath, fileName);
           await postService.addMediaToPost({
             id: postId,
             media: {
               size: file.size,
               mimetype: file.mimetype,
-              cloudinaryPath: path.join(cloudinaryPath, fileName),
+              cloudinaryPath: path.posix.join(cloudinaryPath, fileName),
             },
           });
         } catch (e) {
@@ -98,7 +100,7 @@ export namespace uploadFiles {
             media: {
               size: file.size,
               mimetype: file.mimetype,
-              cloudinaryPath: path.join(cloudinaryPath, fileName),
+              cloudinaryPath: path.posix.join(cloudinaryPath, fileName),
             },
           });
         } catch (e) {

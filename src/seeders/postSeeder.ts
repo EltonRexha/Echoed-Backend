@@ -34,7 +34,7 @@ export class PostSeeder implements Seeder {
         responseType: 'arraybuffer',
       });
 
-      const tmpFilePath = path.join(tmpFolder, `file_${uuid()}.jpg`);
+      const tmpFilePath = path.join(tmpFolder, `myFile_${uuid()}.jpg`);
 
       await writeFile(tmpFilePath, Buffer.from(response.data as ArrayBuffer));
 
