@@ -58,6 +58,38 @@ export class PostSeeder implements Seeder {
     }
   }
 
+  private async fetchPlaceholderVideo(): Promise<Express.Multer.File> {
+    try {
+      const randomSeed = _.random(1, 10);
+      const videoUrl = `https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4`;
+
+      const response = await axios.get(videoUrl, {
+        responseType: 'arraybuffer',
+      });
+
+      const tmpFilePath = path.join(tmpFolder, `myFile_${uuid()}.mp4`);
+      await writeFile(tmpFilePath, Buffer.from(response.data as ArrayBuffer));
+
+      const file: Express.Multer.File = {
+        fieldname: 'video',
+        originalname: `seed-video-${randomSeed}.mp4`,
+        encoding: '7bit',
+        mimetype: 'video/mp4',
+        destination: tmpFolder,
+        filename: path.basename(tmpFilePath),
+        path: tmpFilePath,
+        size: Buffer.from(response.data as ArrayBuffer).length,
+        buffer: Buffer.from(response.data as ArrayBuffer),
+        stream: fs.createReadStream(tmpFilePath),
+      } as any;
+
+      return file;
+    } catch (error) {
+      console.error('Error fetching placeholder video:', error);
+      throw error;
+    }
+  }
+
   private async seedPost(
     tagsIds: string[],
     userId?: string,
@@ -96,29 +128,42 @@ export class PostSeeder implements Seeder {
     }
 
     if (addMedia) {
-      const mediaLength = _.random(0, 3);
-      console.log(`Fetching ${mediaLength} images`);
+      const imageLength = _.random(0, 3);
+      console.log(`Fetching ${imageLength} images`);
       try {
-        for (let i = 0; i < mediaLength; i++) {
-
+        for (let i = 0; i < imageLength; i++) {
           console.log(`Fetching image ${i + 1}`);
           const imageFile = await this.fetchPlaceholderImage();
           console.log(`Fetching image ${i + 1} done`);
 
           console.log(`uploading image ${i + 1}`);
-
           await uploadFiles.post({
             files: [imageFile],
             postId: createPost.id,
             userId: userId,
           });
-
           console.log(`uploading image ${i + 1} done`);
         }
-        console.log(`Fetching ${mediaLength} images`);
+        console.log(`Fetching ${imageLength} images`);
+
+        const videoLength = _.random(0, 1);
+        console.log(`Fetching ${videoLength} videos`);
+        for (let i = 0; i < videoLength; i++) {
+          console.log(`Fetching video ${i + 1}`);
+          const videoFile = await this.fetchPlaceholderVideo();
+          console.log(`Fetching video ${i + 1} done`);
+
+          console.log(`uploading video ${i + 1}`);
+          await uploadFiles.post({
+            files: [videoFile],
+            postId: createPost.id,
+            userId: userId,
+          });
+          console.log(`uploading video ${i + 1} done`);
+        }
+        console.log(`Fetching ${videoLength} videos done`);
       } catch (error) {
         console.error('Error adding media to post:', error);
-        // Continue with post creation even if media upload fails
       }
     }
 
@@ -137,7 +182,7 @@ export class PostSeeder implements Seeder {
         Math.floor(Math.random() * 2) === 1 ? _.sample(ids) : undefined,
         _.sampleSize(prevUserIds, _.random(0, prevUserIds.length)),
         _.sampleSize(prevUserIds, _.random(0, prevUserIds.length)),
-        true // Always add media to make sure images are uploaded
+        true
       );
       ids.push(postId);
     }

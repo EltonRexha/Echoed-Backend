@@ -61,7 +61,6 @@ export namespace uploadFiles {
       files,
       uploadCb: async (file, fileName) => {
         try {
-          console.log(cloudinaryPath, fileName);
           await postService.addMediaToPost({
             id: postId,
             media: {

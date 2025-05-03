@@ -25,7 +25,7 @@ seed(
     seederName: 'tags',
   },
   {
-    amount: 1,
+    amount: 100,
     seeder: postSeeder,
     seederName: 'post',
   },
