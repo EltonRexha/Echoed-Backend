@@ -73,9 +73,6 @@ export namespace postRecommendationService {
     }
 
     const nextDays = originalDays * 2 * (currentRetry + 1);
-    console.log(
-      `Not enough trending posts found. Expanding to ${nextDays} days ago.`
-    );
 
     const expandedPosts: Post[] = await getTrendingPosts({
       amount,
@@ -146,9 +143,7 @@ export namespace postRecommendationService {
     }
 
     const nextDays = originalDays * 2 * (currentRetry + 1);
-    console.log(
-      `Not enough following posts found. Expanding to ${nextDays} days ago.`
-    );
+
 
     const expandedPosts: Post[] = await getTrendingFollowingPosts({
       amount,
@@ -218,9 +213,6 @@ export namespace postRecommendationService {
     }
 
     const nextDays = originalDays * 2 * (currentRetry + 1);
-    console.log(
-      `Not enough preferred tag posts found. Expanding to ${nextDays} days ago.`
-    );
 
     const expandedPosts: Post[] = await getPostsFromPreferredTags({
       amount,
@@ -264,7 +256,6 @@ export namespace postRecommendationService {
               userId,
               prevPostIds: forYouPosts.map((item) => item.id),
             });
-            console.log('adding trending posts');
             continue;
           }
 
@@ -282,15 +273,12 @@ export namespace postRecommendationService {
             //Pick trending posts
             if (posts.length < choiceAmount) {
               const rest = choiceAmount - posts.length;
-              console.log('Not enough', rest, 'following');
-              console.log('Before forYouPosts length', forYouPosts.length);
               await addTrendingPosts({
                 posts: forYouPosts,
                 amount: rest,
                 userId,
                 prevPostIds: forYouPosts.map((item) => item.id),
               });
-              console.log('After forYouPosts length', forYouPosts.length);
             }
 
             continue;
@@ -310,15 +298,12 @@ export namespace postRecommendationService {
             //Pick trending posts
             if (posts.length < choiceAmount) {
               const rest = choiceAmount - posts.length;
-              console.log('Not enough', rest, 'preferred tags');
-              console.log('Before forYouPosts length', forYouPosts.length);
               await addTrendingPosts({
                 posts: forYouPosts,
                 amount: rest,
                 userId,
                 prevPostIds: forYouPosts.map((item) => item.id),
               });
-              console.log('After forYouPosts length', forYouPosts.length);
             }
 
             continue;
