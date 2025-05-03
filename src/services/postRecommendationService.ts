@@ -11,6 +11,7 @@ import {
   addUserInteractionFlags,
 } from '../utils/postQueryPatterns';
 
+
 const FOR_YOU_WEIGHTS = {
   preferredTags: 0.4,
   following: 0.3,
@@ -55,7 +56,16 @@ export namespace postRecommendationService {
       },
       orderBy: POST_TRENDING_ORDER_BY,
       take: amount,
-      include: getPostIncludeWithUserStatus(userId),
+      include: {
+        ...getPostIncludeWithUserStatus(userId),
+        Media: {
+          select: {
+            path: true,
+            byteSize: true,
+            mimeType: true,
+          },
+        },
+      },
     });
 
     if (posts.length === amount || currentRetry >= maxRetries) {
@@ -119,7 +129,16 @@ export namespace postRecommendationService {
       },
       orderBy: POST_TRENDING_ORDER_BY,
       take: amount,
-      include: getPostIncludeWithUserStatus(userId),
+      include: {
+        ...getPostIncludeWithUserStatus(userId),
+        Media: {
+          select: {
+            path: true,
+            byteSize: true,
+            mimeType: true,
+          },
+        },
+      },
     });
 
     if (posts.length === amount || currentRetry >= maxRetries) {
@@ -182,7 +201,16 @@ export namespace postRecommendationService {
       },
       orderBy: POST_TRENDING_ORDER_BY,
       take: amount,
-      include: getPostIncludeWithUserStatus(userId),
+      include: {
+        ...getPostIncludeWithUserStatus(userId),
+        Media: {
+          select: {
+            path: true,
+            byteSize: true,
+            mimeType: true,
+          },
+        },
+      },
     });
 
     if (posts.length === amount || currentRetry >= maxRetries) {
@@ -383,7 +411,16 @@ export namespace postRecommendationService {
               },
               orderBy: POST_TRENDING_ORDER_BY,
               take: FOLLOWING_POST_AMOUNT,
-              include: getPostIncludeWithUserStatus(userId),
+              include: {
+                ...getPostIncludeWithUserStatus(userId),
+                Media: {
+                  select: {
+                    path: true,
+                    byteSize: true,
+                    mimeType: true,
+                  },
+                },
+              },
             })
           );
         },
